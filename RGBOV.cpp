@@ -27,7 +27,19 @@
 
 #include "glcdfont.c"
 
-const uint8_t STCP[4] = {4, 4, 4, 4};
+#define nop()  __asm__ __volatile__("nop")
+
+#define	PIN_STCP		2
+#define	PIN_SHCP		5
+#define	PIN_DS			3
+
+#undef USE_SR_CLASS
+#undef USE_SR_SPI
+#define USE_SR_MANUALBB
+
+
+#ifdef USE_SR_CLASS
+const uint8_t STCP[4] = {PIN_STCP, PIN_STCP, PIN_STCP, PIN_STCP};
 sr595 sr(
 		4, 					// nCascadeCount
 		0, 					// fParallel
@@ -35,10 +47,11 @@ sr595 sr(
 		&DDRB, 				// ptrDir
 		7,	 				// nOE
 		0, 					// Invert OE
-		3,			 		// nDS
-		5, 					// nSHCP
+		PIN_DS,			 		// nDS
+		PIN_SHCP, 					// nSHCP
 		STCP				// anSTCP
 		);
+#endif
 
 
 volatile	uint16_t	nHiResTimebaseCount;
@@ -66,7 +79,7 @@ volatile	uint32_t	nIntensityTimerHitCounter;
 volatile	uint8_t		idxHorizontalPixel;
 volatile	uint8_t		idxIntensityTimeSlice;
 
-uint8_t graphic[VERTICAL_PIXELS][HORZ_RESOLUTION];
+//~ uint8_t graphic[VERTICAL_PIXELS][HORZ_RESOLUTION];
 /*
 = 
 {
@@ -124,7 +137,7 @@ uint8_t graphic[VERTICAL_PIXELS][HORZ_RESOLUTION] =
  {00, 00, 42, 17, 17, 17, 42, 00, 38, 17, 17, 17, 00, 00, 00, 3, 3, 23, 00, 43, 3, 3, 00, 58, 48, 48, 48, 53, 53, 48, 53, 62, 60, 60, 60, 61, 61, 60, 61, 00		,00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00 },
  {00, 00, 00, 17, 17, 17, 42, 00, 42, 17, 17, 38, 00, 00, 00, 3, 3, 23, 00, 43, 3, 3, 00, 00, 58, 48, 48, 48, 48, 48, 58, 00, 62, 60, 60, 60, 60, 60, 62, 00		,00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00 }
 };
-
+*/
 uint8_t graphic[VERTICAL_PIXELS][HORZ_RESOLUTION] = 
 {
  {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00},
@@ -138,7 +151,7 @@ uint8_t graphic[VERTICAL_PIXELS][HORZ_RESOLUTION] =
  {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x00, 0x30, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00},
  {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00}
 };
-*/
+
 uint8_t intensityMap[INTENSITY_LEVELS] = { 0, 1, 3, 7 };
 	
 
@@ -221,7 +234,38 @@ void doDisplayUpdate() {
 	*/
 	
 	// Send the column
+#if defined USE_SR_CLASS
 	sr.forceWriteData(0, COLUMN_DATA_BYTES, nColumnData);	
+#elif defined USE_SR_SPI
+	PORTB &= ~(1<<PIN_STCP);					// Lower STCP
+	for (int i=0; i<COLUMN_DATA_BYTES; i++) {
+		SPDR = nColumnData[4-i];
+		while (!(SPSR & (1<<SPIF)));		// Wait for the data to be sent
+	}	
+	PORTB |= (1<<PIN_STCP);					// Raise STCP
+	//~ PORTB &= ~(1<<PIN_SHCP);					// Lower SHCP
+	//~ nop();
+	//~ PORTB &= ~(1<<PIN_STCP);				// Lower STCP
+	//~ PORTB |= (1<<PIN_STCP);					// Raise STCP
+	//~ PORTB = 0;
+#elif defined USE_SR_MANUALBB
+	for (int i=0; i<COLUMN_DATA_BYTES; i++) {
+		for (int nBit=7; nBit>=0; nBit--) {
+			PORTB = 0;		// lower SHCP (everything)
+			if (nColumnData[4-i] & (0x01 << nBit)) {
+				PORTB |= 1<<PIN_DS;		// Raise DS 
+			} else {
+				//~ PORTB = 0;				// Lower DS and lower SHCP
+			}
+			PORTB |= 1<<PIN_SHCP;			// Raise SHCP
+		}
+	}
+	PORTB |= 1<<PIN_STCP;					// Raise STCP
+	//~ PORTB = 1<<PIN_STCP;					// Raise STCP, lower SHCP
+	PORTB = 0;							// Lower everything
+#else
+#error Cant use shift registers	
+#endif	
 }
 
 ISR(TIMER1_COMPA_vect ) {
@@ -277,12 +321,14 @@ uint16_t drawText(char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
 int main() {
 	//~ drawText(&graphic[0][0], 80, 10, "hello, world\0", 0, 3, 0, 0);
 	//~ drawText(graphic, 80, 10, "hello, world\0", 0, 3, 0, 0);
+	/*
 	uint16_t x = 0;
 	x=drawText("Hel", 0, 3, x, 0);
 	x=drawText("l\0", 0, 2, x, 0);
 	x=drawText("l0\0", 0, 1, x, 0);
 	x=drawText("world\0", 0, 48, x, 0);
 	x=drawText("!\0", 0, 16, x, 0);
+	*/
 //~ void drawText(uint8_t* pMemory/*[VERTICAL_PIXELS][HORZ_RESOLUTION]*/, uint8_t w, uint8_t h, char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
 	
 	// Wheel speed measurement timer = timer 0
@@ -322,6 +368,21 @@ int main() {
 	//~ PORTD = 0xFF;		// Pull up resistors on all PORTD pins
 
 
+	// Set up the SPI
+#ifdef USE_SR_SPI
+	SPCR = 0
+		|(0<<SPIE)		// Interrupt 
+		|(1<<SPE)		// SPI enable
+		|(1<<DORD)		// MSB first
+		|(1<<MSTR)		// Master
+		|(1<<CPOL)		// Clock polarity: When this bit is written to one, SCK is high when idle.
+		|(1<<CPHA)		// Clock leading/trailing edge
+		|(1<<SPR1)|(1<<SPR0)	// F_mhz/4
+		;
+	SPSR = 0
+		|(1<<SPI2X)		// Speed doubling
+		;
+#	endif		
 	//~ uint8_t anData[4] = {0x00, 0x00, 0x00, 0x00};
 	//~ sr.forceWriteData(0, 4, anData);	
 	nTicksPerRevolution = 0;
