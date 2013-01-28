@@ -71,7 +71,7 @@
 #~ MCU=atmega48a
 #~ MCU=atmega16
 #~ MCU=atmega32
-MCU=atmega328
+MCU=atmega328p
 MACROS+=-D F_CPU=8000000UL
 PROGRAMMER_MCU=m328pu
 
