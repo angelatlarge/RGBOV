@@ -3,6 +3,7 @@
 #include <math.h>
 #include "sr595.h"
 #include "string.h"
+#include "stdlib.h"
 #include <util/delay.h>
 /* 
 	Timer0 (8-bit):  Wheel speed measurement
@@ -60,7 +61,7 @@ volatile	uint16_t	nTicksPerRevolution;
 
 volatile	uint32_t	nIntensityTimerHitCounter;
 
-#define	HORZ_RESOLUTION			180
+#define	HORZ_PIXELS				120
 #define	INTENSITY_LEVELS		4
 #define	INTENSITY_COUNTER_MAX	1<<(INTENSITY_LEVELS-1)
 #define VERTICAL_PIXELS			10
@@ -79,7 +80,7 @@ volatile	uint32_t	nIntensityTimerHitCounter;
 volatile	uint8_t		idxHorizontalPixel;
 volatile	uint8_t		idxIntensityTimeSlice;
 
-//~ uint8_t graphic[VERTICAL_PIXELS][HORZ_RESOLUTION];
+uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS];
 /*
 = 
 {
@@ -96,7 +97,7 @@ volatile	uint8_t		idxIntensityTimeSlice;
 };
 */
 /*
-uint8_t graphic[VERTICAL_PIXELS][HORZ_RESOLUTION] = 
+uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] = 
 {
  {32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00},
  {32, 36, 36, 36, 36, 36, 36, 36, 36, 36, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00},
@@ -111,7 +112,7 @@ uint8_t graphic[VERTICAL_PIXELS][HORZ_RESOLUTION] =
 };
 */
 /*
-uint8_t graphic[VERTICAL_PIXELS][HORZ_RESOLUTION] = 
+uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] = 
 {
  {63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 43, 23, 43, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63	,00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00 },
  {63, 17, 17, 38, 63, 63, 17, 17, 17, 63, 63, 38, 17, 17, 63, 3, 3, 23, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63		,00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00 },
@@ -124,7 +125,7 @@ uint8_t graphic[VERTICAL_PIXELS][HORZ_RESOLUTION] =
  {63, 63, 42, 17, 17, 17, 42, 63, 38, 17, 17, 17, 63, 63, 63, 3, 3, 23, 63, 43, 3, 3, 63, 58, 48, 48, 48, 53, 53, 48, 53, 62, 60, 60, 60, 61, 61, 60, 61, 63		,00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00 },
  {63, 63, 63, 17, 17, 17, 42, 63, 42, 17, 17, 38, 63, 63, 63, 3, 3, 23, 63, 43, 3, 3, 63, 63, 58, 48, 48, 48, 48, 48, 58, 63, 62, 60, 60, 60, 60, 60, 62, 63		,00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00 }
 };
-uint8_t graphic[VERTICAL_PIXELS][HORZ_RESOLUTION] = 
+uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] = 
 {
  {00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 43, 23, 43, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00	,00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00 },
  {00, 17, 17, 38, 00, 00, 17, 17, 17, 00, 00, 38, 17, 17, 00, 3, 3, 23, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00		,00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00 },
@@ -137,8 +138,7 @@ uint8_t graphic[VERTICAL_PIXELS][HORZ_RESOLUTION] =
  {00, 00, 42, 17, 17, 17, 42, 00, 38, 17, 17, 17, 00, 00, 00, 3, 3, 23, 00, 43, 3, 3, 00, 58, 48, 48, 48, 53, 53, 48, 53, 62, 60, 60, 60, 61, 61, 60, 61, 00		,00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00 },
  {00, 00, 00, 17, 17, 17, 42, 00, 42, 17, 17, 38, 00, 00, 00, 3, 3, 23, 00, 43, 3, 3, 00, 00, 58, 48, 48, 48, 48, 48, 58, 00, 62, 60, 60, 60, 60, 60, 62, 00		,00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00 }
 };
-*/
-uint8_t graphic[VERTICAL_PIXELS][HORZ_RESOLUTION] = 
+uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] = 
 {
  {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00},
  {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00},
@@ -151,130 +151,12 @@ uint8_t graphic[VERTICAL_PIXELS][HORZ_RESOLUTION] =
  {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x00, 0x30, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00},
  {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00}
 };
+*/
 
 uint8_t intensityMap[INTENSITY_LEVELS] = { 0, 1, 3, 7 };
 	
 
-uint8_t checkUpdateWheelSpeed() {	/* Returns whether speed was updated */
-	uint16_t nNewWheelTick = nHiResTimebaseCount;
-	if ((nNewWheelTick - nLastWheelTick) > 1000)	{		// This is a dumb-ass debouncing circuit
-		nTicksPerRevolution = nNewWheelTick - nLastWheelTick;
-		nLastWheelTick = nNewWheelTick;
-		return 1;
-	} 
-	return 0;
-}
-
-ISR(TIMER0_COMPA_vect ) {
-	// Timebase for wheel speed
-	nHiResTimebaseCount++;
-}
-
-ISR(INT0_vect) {
-	
-	// Occurs when the hall switch is triggered
-	
-	// 1. Calculate the new wheel speed
-	if (checkUpdateWheelSpeed()) {
-	
-		// 2. Set up the timer interrupt 
-		if (nTicksPerRevolution > 0) {
-			float fWheelFreq = (float)nTicksPerRevolution / WHEEL_SPEED_TIMER_FREQ_FLOAT;		// Wheel frequency
-			// We want the intensity timer tick to occur 2^(INTENSITY_LEVELS) times per horizontal pixel
-			OCR1A = round(INTENS_TIMER_BASEFREQ_FLOAT/fWheelFreq/(float)(1<<INTENSITY_LEVELS)/(float)HORZ_RESOLUTION);		
-			
-			// 3. Reset the pixel position
-			idxHorizontalPixel = idxIntensityTimeSlice = 0;
-		} /*
-			else: 
-				potentially dividing by zero when computing the necessary intensity timer frequency
-		}
-		*/
-	}		
-}
-
-void doDisplayUpdate() {
-	
-	static uint8_t nColumnData[COLUMN_DATA_BYTES];
-	
-	memset(nColumnData, 0, sizeof(nColumnData));
-	if (idxHorizontalPixel<HORZ_RESOLUTION) {
-		// Prepare a column to send
-		uint8_t idxOutBit = 0;
-		uint8_t idxOutByte = 0;
-		for (int idxRow=0; idxRow<VERTICAL_PIXELS; idxRow++) {
-			for (int idxColor = 4; idxColor>=0; idxColor-=2) {	/* start with red (00110000) */
-				uint8_t nColorIntensity = ((0x03<<idxColor) & graphic[idxRow][idxHorizontalPixel]) >> idxColor;
-				uint8_t nColorIntTS = intensityMap[nColorIntensity];
-				if (nColorIntTS>idxIntensityTimeSlice) {
-					// This color on this pixel is still ON
-					nColumnData[idxOutByte] |= 1<<idxOutBit;
-				} /*
-					else:
-						this bit is already zero, see memset above
-				*/
-				if (++idxOutBit>7) {
-					idxOutByte++;
-					idxOutBit=0;
-				}
-			}
-		}
-		
-		// Move to the next intensity
-		if (++idxIntensityTimeSlice >= INTENSITY_COUNTER_MAX) {
-			idxIntensityTimeSlice = 0;
-			idxHorizontalPixel++;
-		}
-		
-	} /*
-		else {
-			The column data is already zeros (see memset above), 
-			so just send that
-		}
-	*/
-	
-	// Send the column
-#if defined USE_SR_CLASS
-	sr.forceWriteData(0, COLUMN_DATA_BYTES, nColumnData);	
-#elif defined USE_SR_SPI
-	PORTB &= ~(1<<PIN_STCP);					// Lower STCP
-	for (int i=0; i<COLUMN_DATA_BYTES; i++) {
-		SPDR = nColumnData[4-i];
-		while (!(SPSR & (1<<SPIF)));		// Wait for the data to be sent
-	}	
-	PORTB |= (1<<PIN_STCP);					// Raise STCP
-	//~ PORTB &= ~(1<<PIN_SHCP);					// Lower SHCP
-	//~ nop();
-	//~ PORTB &= ~(1<<PIN_STCP);				// Lower STCP
-	//~ PORTB |= (1<<PIN_STCP);					// Raise STCP
-	//~ PORTB = 0;
-#elif defined USE_SR_MANUALBB
-	for (int i=0; i<COLUMN_DATA_BYTES; i++) {
-		for (int nBit=7; nBit>=0; nBit--) {
-			PORTB = 0;		// lower SHCP (everything)
-			if (nColumnData[4-i] & (0x01 << nBit)) {
-				PORTB |= 1<<PIN_DS;		// Raise DS 
-			} else {
-				//~ PORTB = 0;				// Lower DS and lower SHCP
-			}
-			PORTB |= 1<<PIN_SHCP;			// Raise SHCP
-		}
-	}
-	PORTB |= 1<<PIN_STCP;					// Raise STCP
-	//~ PORTB = 1<<PIN_STCP;					// Raise STCP, lower SHCP
-	PORTB = 0;							// Lower everything
-#else
-#error Cant use shift registers	
-#endif	
-}
-
-ISR(TIMER1_COMPA_vect ) {
-	// Timebase for intensity timer hit
-	nIntensityTimerHitCounter++;
-}
-
-
-//~ void drawText(uint8_t pMemory[VERTICAL_PIXELS][HORZ_RESOLUTION], uint8_t w, uint8_t h, char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
+//~ void drawText(uint8_t pMemory[VERTICAL_PIXELS][HORZ_PIXELS], uint8_t w, uint8_t h, char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
 uint16_t drawText(char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
 	uint8_t idxChar = 0;
 	while (str[idxChar]) {
@@ -287,7 +169,7 @@ uint16_t drawText(char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
 			}
 			
 			for (int8_t j = 0; j<8; j++) {	// Y loop
-				if ((x+i<HORZ_RESOLUTION) && (y+j<VERTICAL_PIXELS)) {
+				if ((x+i<HORZ_PIXELS) && (y+j<VERTICAL_PIXELS)) {
 				
 					graphic[y+j][x+i] = (line & 0x1) ? fg : bg;
 				}
@@ -318,18 +200,149 @@ uint16_t drawText(char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
 	return x;
 }
 
+uint8_t checkUpdateWheelSpeed() {	/* Returns whether speed was updated */
+	uint16_t nNewWheelTick = nHiResTimebaseCount;
+	if ((nNewWheelTick - nLastWheelTick) > 1000)	{		// This is a dumb-ass debouncing circuit
+		nTicksPerRevolution = nNewWheelTick - nLastWheelTick;
+		nLastWheelTick = nNewWheelTick;
+		return 1;
+	} 
+	return 0;
+}
+
+ISR(TIMER0_COMPA_vect ) {
+	// Timebase for wheel speed
+	nHiResTimebaseCount++;
+}
+
+ISR(INT0_vect) {
+	
+	// Occurs when the hall switch is triggered
+	
+	// 1. Calculate the new wheel speed
+	if (checkUpdateWheelSpeed()) {
+	
+		// 2. Set up the timer interrupt 
+		if (nTicksPerRevolution > 0) {
+			float fWheelFreq = WHEEL_SPEED_TIMER_FREQ_FLOAT/(float)nTicksPerRevolution;		// Wheel frequency
+			uint8_t nWF = fWheelFreq;
+			char strWF[10];
+			itoa(nWF, strWF, 10);
+			int8_t x = 0;
+			memset(&graphic[0][0], 00, VERTICAL_PIXELS*HORZ_PIXELS);
+			for (int i=0; i<5; i++) {
+				x = drawText(strWF, 0x00, 0x30, x, 0);
+				x = drawText(" \0", 0x00, 0x30, x, 0);
+			}
+			//~ drawText(strWF, 0xFF, 00, 0, 0);
+			
+			// We want the intensity timer tick to occur 2^(INTENSITY_LEVELS) times per horizontal pixel
+			OCR1A = round(INTENS_TIMER_BASEFREQ_FLOAT/fWheelFreq/(float)(INTENSITY_COUNTER_MAX)/(float)HORZ_PIXELS);		
+			
+			// 3. Reset the pixel position
+			idxHorizontalPixel = idxIntensityTimeSlice = 0;
+		} /*
+			else: 
+				potentially dividing by zero when computing the necessary intensity timer frequency
+		}
+		*/
+	}		
+}
+
+void doDisplayUpdate() {
+	
+	static uint8_t nColumnData[COLUMN_DATA_BYTES];
+	
+	memset(nColumnData, 0, sizeof(nColumnData));
+	if (idxHorizontalPixel<HORZ_PIXELS) {
+		// Prepare a column to send
+		uint8_t idxOutBit = 0;
+		uint8_t idxOutByte = 0;
+		for (int idxRow=0; idxRow<VERTICAL_PIXELS; idxRow++) {
+			for (int idxColor = 4; idxColor>=0; idxColor-=2) {	/* start with red (00110000) */
+				uint8_t nColorIntensity = ((0x03<<idxColor) & graphic[idxRow][idxHorizontalPixel]) >> idxColor;
+				uint8_t nColorIntTS = intensityMap[nColorIntensity];
+				if (nColorIntTS>idxIntensityTimeSlice) {
+					// This color on this pixel should be ON
+					nColumnData[idxOutByte] |= 1<<idxOutBit;
+				} /*
+					else:
+						this bit is already zero, see memset above
+				*/
+				if (++idxOutBit>7) {
+					idxOutByte++;
+					idxOutBit=0;
+				}
+			}
+		}
+		
+		// Move to the next intensity
+		if (++idxIntensityTimeSlice >= INTENSITY_COUNTER_MAX) {
+			idxIntensityTimeSlice = 0;
+			idxHorizontalPixel++;
+		}
+		
+	} /*
+		else {
+			The column data is already zeros (see memset above), 
+			so just send that
+		}
+	*/
+	
+	// Send the column
+#if defined USE_SR_CLASS
+	sr.forceWriteData(0, COLUMN_DATA_BYTES, nColumnData);	
+#elif defined USE_SR_SPI
+	//~ PORTB &= ~(1<<PIN_STCP);					// Lower STCP
+	PORTB=0;
+	for (int i=0; i<COLUMN_DATA_BYTES; i++) {
+		SPDR = nColumnData[3-i];
+		while (!(SPSR & (1<<SPIF)));		// Wait for the data to be sent
+	}	
+	PORTB = (1<<PIN_STCP);					// Raise STCP
+	//~ PORTB &= ~(1<<PIN_SHCP);					// Lower SHCP
+	//~ nop();
+	//~ PORTB &= ~(1<<PIN_STCP);				// Lower STCP
+	//~ PORTB |= (1<<PIN_STCP);					// Raise STCP
+	//~ PORTB = 0;
+	
+#elif defined USE_SR_MANUALBB
+	/* Fastest bit-banging algorithm I could come up with */
+	for (int i=0; i<COLUMN_DATA_BYTES; i++) {
+		for (int nBit=7; nBit>=0; nBit--) {
+			PORTB = 0; 						// Lower SHCP... PORTB &= ~(1<<PIN_SHCP) works too, but this should be a hair faster
+			if (nColumnData[3-i] & (0x01 << nBit)) {
+				PORTB = (1<<PIN_DS)|(1<<PIN_SHCP);		// Raise DS 
+			} else {
+				PORTB = 1<<PIN_SHCP;
+			}
+		}
+	}
+	PORTB = 1<<PIN_STCP;					// Raise STCP
+#else
+#error Cant use shift registers	
+#endif	
+}
+
+ISR(TIMER1_COMPA_vect ) {
+	// Timebase for intensity timer hit
+	nIntensityTimerHitCounter++;
+}
+
+
+
 int main() {
 	//~ drawText(&graphic[0][0], 80, 10, "hello, world\0", 0, 3, 0, 0);
 	//~ drawText(graphic, 80, 10, "hello, world\0", 0, 3, 0, 0);
-	/*
+
 	uint16_t x = 0;
 	x=drawText("Hel", 0, 3, x, 0);
 	x=drawText("l\0", 0, 2, x, 0);
 	x=drawText("l0\0", 0, 1, x, 0);
 	x=drawText("world\0", 0, 48, x, 0);
 	x=drawText("!\0", 0, 16, x, 0);
-	*/
-//~ void drawText(uint8_t* pMemory/*[VERTICAL_PIXELS][HORZ_RESOLUTION]*/, uint8_t w, uint8_t h, char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
+
+	//~ void drawText(uint8_t* pMemory/*[VERTICAL_PIXELS][HORZ_PIXELS]*/, uint8_t w, uint8_t h, char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
 	
 	// Wheel speed measurement timer = timer 0
 	TCCR0A = 0 
@@ -375,8 +388,8 @@ int main() {
 		|(1<<SPE)		// SPI enable
 		|(1<<DORD)		// MSB first
 		|(1<<MSTR)		// Master
-		|(1<<CPOL)		// Clock polarity: When this bit is written to one, SCK is high when idle.
-		|(1<<CPHA)		// Clock leading/trailing edge
+		|(0<<CPOL)		// Clock polarity: When this bit is written to one, SCK is high when idle.
+		|(0<<CPHA)		// Clock leading/trailing edge
 		|(1<<SPR1)|(1<<SPR0)	// F_mhz/4
 		;
 	SPSR = 0
