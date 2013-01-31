@@ -50,6 +50,21 @@ patters. It would be extra helpful to know this at various different speeds.
 Perhaps RGBOV v1.0 can record this data, 
 and transmit to the mothership for latter analysis?
 
+Actually, if we think that there is acceleration/deceleration
+the right thing to do is not necessarily use a constant speed, 
+but rather change the update timer continuosely to match acceleration/deceleration.
+Changing OCR1A while the timer is running is not entirely unproblematic
+(even though we do this every time the hall effect switch hits).
+Here's what the datasheet has to say on this topic:
+
+However, changing the TOP to a value close to BOTTOM when the counter is running with none or a
+low prescaler value must be done with care since the CTC mode does not have the double buffering
+feature. If the new value written to OCR1A or ICR1 is lower than the current value of
+TCNT1, the counter will miss the compare match. The counter will then have to count to its maximum
+value (0xFFFF) and wrap around starting at 0x0000 before the compare match can occur.
+In many cases this feature is not desirable. An alternative will then be to use the fast PWM mode
+using OCR1A for defining TOP (WGM13:0 = 15) since the OCR1A then will be double buffered.
+
 * Moar sensor!  If our hall-effect switch was "stationary" (in the relevant sense), 
 we could add more magnets in order to react to changing speeds quickly. However, our
 sensor is rotating with the wheel itself, therefore, this will not work.  Possible workarounds:
