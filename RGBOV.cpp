@@ -2,9 +2,11 @@
 #include <avr/interrupt.h>
 #include <math.h>
 #include "sr595.h"
-#include "string.h"
-#include "stdlib.h"
+#include <string.h>
+#include <stdlib.h>
 #include <util/delay.h>
+#include "serial.h"
+#include "strfmt.h"
 /* 
 	Timer0 (8-bit):  Wheel speed measurement
 	Timer1 (16-bit): Intensity timebase
@@ -62,7 +64,7 @@ volatile	uint16_t	nTicksPerRevolution;
 volatile	uint32_t	nIntensityTimerHitCounter;
 
 #define	HORZ_PIXELS				120
-#define	INTENSITY_LEVELS		4
+#define	INTENSITY_LEVELS		1
 #define	INTENSITY_COUNTER_MAX	1<<(INTENSITY_LEVELS-1)
 #define VERTICAL_PIXELS			10
 #define COLUMN_DATA_BYTES	(VERTICAL_PIXELS*3/8+( (VERTICAL_PIXELS*3%8) ? 1 : 0))
@@ -78,7 +80,9 @@ volatile	uint32_t	nIntensityTimerHitCounter;
 #define INTENS_TIMER_BASEFREQ_FLOAT		((float)F_CPU/(float)INTENS_TIMER_PRESCALER)
 
 volatile	uint8_t		idxHorizontalPixel;
+#if INTENSITY_LEVELS>1
 volatile	uint8_t		idxIntensityTimeSlice;
+#endif /* INTENSITY_LEVELS>1 */
 
 uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS];
 /*
@@ -153,11 +157,16 @@ uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] =
 };
 */
 
+#if INTENSITY_LEVELS>1
 uint8_t intensityMap[INTENSITY_LEVELS] = { 0, 1, 3, 7 };
-	
+#endif 	
+
+void eraseGraphic() {
+	memset(&graphic[0][0], 00, VERTICAL_PIXELS*HORZ_PIXELS);
+}
 
 //~ void drawText(uint8_t pMemory[VERTICAL_PIXELS][HORZ_PIXELS], uint8_t w, uint8_t h, char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
-uint16_t drawText(char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
+uint16_t drawText(const char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
 	uint8_t idxChar = 0;
 	while (str[idxChar]) {
 		for (int8_t i=0; i<6; i++ ) {	// X LOOP i is the x dimension in the font
@@ -229,18 +238,24 @@ ISR(INT0_vect) {
 			char strWF[10];
 			itoa(nWF, strWF, 10);
 			int8_t x = 0;
-			memset(&graphic[0][0], 00, VERTICAL_PIXELS*HORZ_PIXELS);
+			eraseGraphic();
 			for (int i=0; i<5; i++) {
-				x = drawText(strWF, 0x00, 0x30, x, 0);
-				x = drawText(" \0", 0x00, 0x30, x, 0);
+				x = drawText(strWF, 0x00, 0x3F, x, 0);
+				x = drawText(" \0", 0x00, 0x3F, x, 0);
 			}
 			//~ drawText(strWF, 0xFF, 00, 0, 0);
 			
 			// We want the intensity timer tick to occur 2^(INTENSITY_LEVELS) times per horizontal pixel
 			OCR1A = round(INTENS_TIMER_BASEFREQ_FLOAT/fWheelFreq/(float)(INTENSITY_COUNTER_MAX)/(float)HORZ_PIXELS);		
 			
+			dputsi("INTENSITY_COUNTER_MAX: ", INTENSITY_COUNTER_MAX);
+
 			// 3. Reset the pixel position
-			idxHorizontalPixel = idxIntensityTimeSlice = 0;
+#			if INTENSITY_LEVELS>1			
+				idxHorizontalPixel = idxIntensityTimeSlice = 0;
+#			else			
+				idxHorizontalPixel = 0;
+#			endif /* INTENSITY_LEVELS>1 */
 		} /*
 			else: 
 				potentially dividing by zero when computing the necessary intensity timer frequency
@@ -259,16 +274,28 @@ void doDisplayUpdate() {
 		uint8_t idxOutBit = 0;
 		uint8_t idxOutByte = 0;
 		for (int idxRow=0; idxRow<VERTICAL_PIXELS; idxRow++) {
-			for (int idxColor = 4; idxColor>=0; idxColor-=2) {	/* start with red (00110000) */
+			for (int idxColor = 4; idxColor>=0; idxColor-=2) {	/* start with red (which is binary 00110000) */
 				uint8_t nColorIntensity = ((0x03<<idxColor) & graphic[idxRow][idxHorizontalPixel]) >> idxColor;
-				uint8_t nColorIntTS = intensityMap[nColorIntensity];
-				if (nColorIntTS>idxIntensityTimeSlice) {
-					// This color on this pixel should be ON
-					nColumnData[idxOutByte] |= 1<<idxOutBit;
-				} /*
-					else:
-						this bit is already zero, see memset above
-				*/
+#				if INTENSITY_LEVELS == 1
+					// No PWM
+					if (nColorIntensity) {
+						nColumnData[idxOutByte] |= 1<<idxOutBit;
+					} /* else {
+						Nothing to do: this bit is already zero
+					} */
+#				else
+					// doing PWM
+					uint8_t nColorIntTS = intensityMap[nColorIntensity];
+					if (nColorIntTS>idxIntensityTimeSlice) {
+						// This color on this pixel should be ON
+						nColumnData[idxOutByte] |= 1<<idxOutBit;
+					} /*
+						else:
+							this bit is already zero, see memset above
+					*/
+#				endif /* Do PWM? */					
+
+				// Move on to the next bit (and maybe byte)
 				if (++idxOutBit>7) {
 					idxOutByte++;
 					idxOutBit=0;
@@ -276,12 +303,15 @@ void doDisplayUpdate() {
 			}
 		}
 		
-		// Move to the next intensity
-		if (++idxIntensityTimeSlice >= INTENSITY_COUNTER_MAX) {
-			idxIntensityTimeSlice = 0;
+#		if INTENSITY_LEVELS == 1
 			idxHorizontalPixel++;
-		}
-		
+#		else			
+			// Move to the next intensity
+			if (++idxIntensityTimeSlice >= INTENSITY_COUNTER_MAX) {
+				idxIntensityTimeSlice = 0;
+				idxHorizontalPixel++;
+			}
+#		endif /* PWM? */		
 	} /*
 		else {
 			The column data is already zeros (see memset above), 
@@ -332,6 +362,9 @@ ISR(TIMER1_COMPA_vect ) {
 
 
 int main() {
+	serial_init();
+	puts("Hello, world");
+
 	//~ drawText(&graphic[0][0], 80, 10, "hello, world\0", 0, 3, 0, 0);
 	//~ drawText(graphic, 80, 10, "hello, world\0", 0, 3, 0, 0);
 

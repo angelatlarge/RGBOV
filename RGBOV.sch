@@ -1,4 +1,4 @@
-EESchema Schematic File Version 2  date 1/28/2013 11:15:50 AM
+EESchema Schematic File Version 2  date 1/31/2013 12:13:53 PM
 LIBS:kirill
 LIBS:power
 LIBS:device
@@ -40,7 +40,7 @@ $Descr User 11000 17000
 encoding utf-8
 Sheet 1 1
 Title ""
-Date "28 jan 2013"
+Date "31 jan 2013"
 Rev ""
 Comp ""
 Comment1 ""
@@ -49,9 +49,12 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 Wire Wire Line
-	3700 2100 3700 3300
+	650  3000 650  3300
+Connection ~ 3900 7050
 Wire Wire Line
-	4450 8500 4700 8500
+	3400 7050 3900 7050
+Wire Wire Line
+	3700 2100 3700 3300
 Wire Wire Line
 	6850 2700 7200 2700
 Wire Wire Line
@@ -60,14 +63,6 @@ Wire Wire Line
 	6850 2300 7200 2300
 Wire Wire Line
 	6850 2100 7200 2100
-Wire Wire Line
-	-1750 8350 -1750 8100
-Wire Wire Line
-	-1750 8100 -1900 8100
-Wire Wire Line
-	-2250 8100 -2550 8100
-Wire Wire Line
-	-2550 7350 -2550 7500
 Connection ~ 4800 2850
 Wire Wire Line
 	4800 2850 3600 2850
@@ -271,20 +266,7 @@ Wire Wire Line
 	4500 3100 3800 3100
 Connection ~ 4500 3100
 Wire Wire Line
-	-2550 8100 -2550 7850
-Wire Wire Line
-	-2550 9000 -2550 8650
-Wire Wire Line
 	2550 4800 3900 4800
-Wire Wire Line
-	3900 4800 3900 8500
-Wire Wire Line
-	-850 8100 -500 8100
-Wire Wire Line
-	-2550 8800 -1750 8800
-Wire Wire Line
-	-1750 8800 -1750 8500
-Connection ~ -2550 8800
 Wire Wire Line
 	7200 2200 6850 2200
 Wire Wire Line
@@ -297,22 +279,145 @@ Wire Wire Line
 	3800 3100 3800 3200
 Wire Wire Line
 	3800 3200 2550 3200
+Wire Wire Line
+	3900 4800 3900 8900
+Wire Wire Line
+	650  5300 650  5200
 $Comp
 L GND #PWR?
-U 1 1 5105A0C7
-P 4700 8550
-F 0 "#PWR?" H 4700 8550 30  0001 C CNN
-F 1 "GND" H 4700 8480 30  0001 C CNN
-	1    4700 8550
+U 1 1 510AA641
+P 650 5350
+F 0 "#PWR?" H 400 5500 60  0001 C CNN
+F 1 "GND" H 550 5050 60  0001 C CNN
+	1    650  5350
 	1    0    0    -1  
 $EndComp
 $Comp
-L SPST SW?
-U 1 1 5105A0A3
-P 4150 8350
-F 0 "SW?" H 4000 8350 60  0000 C CNN
-F 1 "Reed Switch" H 4150 8100 60  0000 C CNN
-	1    4150 8350
+L GND #PWR?
+U 1 1 510AA63D
+P 5600 3000
+F 0 "#PWR?" H 5350 3150 60  0001 C CNN
+F 1 "GND" H 5500 2700 60  0001 C CNN
+	1    5600 3000
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR?
+U 1 1 510AA638
+P 5600 4200
+F 0 "#PWR?" H 5350 4350 60  0001 C CNN
+F 1 "GND" H 5500 3900 60  0001 C CNN
+	1    5600 4200
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR?
+U 1 1 510AA633
+P 5600 5400
+F 0 "#PWR?" H 5350 5550 60  0001 C CNN
+F 1 "GND" H 5500 5100 60  0001 C CNN
+	1    5600 5400
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR?
+U 1 1 510AA62F
+P 5600 6600
+F 0 "#PWR?" H 5350 6750 60  0001 C CNN
+F 1 "GND" H 5500 6300 60  0001 C CNN
+	1    5600 6600
+	1    0    0    -1  
+$EndComp
+$Comp
+L +5V #PWR?
+U 1 1 510AA624
+P 5700 6550
+F 0 "#PWR?" H 5700 6640 20  0001 C CNN
+F 1 "+5V" H 5700 6640 30  0000 C CNN
+	1    5700 6550
+	0    1    1    0   
+$EndComp
+$Comp
+L +5V #PWR?
+U 1 1 510AA61F
+P 5700 5350
+F 0 "#PWR?" H 5700 5440 20  0001 C CNN
+F 1 "+5V" H 5700 5440 30  0000 C CNN
+	1    5700 5350
+	0    1    1    0   
+$EndComp
+$Comp
+L +5V #PWR?
+U 1 1 510AA61B
+P 5700 4150
+F 0 "#PWR?" H 5700 4240 20  0001 C CNN
+F 1 "+5V" H 5700 4240 30  0000 C CNN
+	1    5700 4150
+	0    1    1    0   
+$EndComp
+$Comp
+L +5V #PWR?
+U 1 1 510AA616
+P 5700 2950
+F 0 "#PWR?" H 5700 3040 20  0001 C CNN
+F 1 "+5V" H 5700 3040 30  0000 C CNN
+	1    5700 2950
+	0    1    1    0   
+$EndComp
+$Comp
+L +5V #PWR?
+U 1 1 510AA60F
+P 650 3000
+F 0 "#PWR?" H 650 3090 20  0001 C CNN
+F 1 "+5V" H 650 3090 30  0000 C CNN
+	1    650  3000
+	0    -1   -1   0   
+$EndComp
+$Comp
+L +5V #PWR?
+U 1 1 510AA608
+P 2650 7050
+F 0 "#PWR?" H 2650 7140 20  0001 C CNN
+F 1 "+5V" H 2650 7140 30  0000 C CNN
+	1    2650 7050
+	0    -1   -1   0   
+$EndComp
+$Comp
+L R-US R?
+U 1 1 510AA5F3
+P 2850 6950
+F 0 "R?" H 2850 6950 60  0000 C CNN
+F 1 "330" H 2850 6750 60  0000 C CNN
+	1    2850 6950
+	1    0    0    -1  
+$EndComp
+$Comp
+L LED D?
+U 1 1 510AA5E5
+P 3200 7050
+F 0 "D?" H 3200 7150 50  0000 C CNN
+F 1 "LED" H 3200 6950 50  0000 C CNN
+	1    3200 7050
+	1    0    0    -1  
+$EndComp
+Text Notes 3950 8800 0    60   ~ 0
+Hall effect switch
+$Comp
+L NPN Q?
+U 1 1 510AA5BD
+P 3900 9100
+F 0 "Q?" H 3730 9210 60  0000 C CNN
+F 1 "NPN" H 3900 9000 60  0000 L CNN
+	1    3900 9100
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR?
+U 1 1 5105A0C7
+P 3900 9350
+F 0 "#PWR?" H 3900 9350 30  0001 C CNN
+F 1 "GND" H 3900 9280 30  0001 C CNN
+	1    3900 9350
 	1    0    0    -1  
 $EndComp
 $Comp
@@ -602,71 +707,6 @@ F 0 "R?" H 6700 2000 60  0000 C CNN
 F 1 "R-US" H 6700 1800 60  0000 C CNN
 	1    6700 2000
 	1    0    0    -1  
-$EndComp
-$Comp
-L C-US-POL C1
-U 1 1 50FF84ED
-P -1650 8400
-F 0 "C1" H -1650 8400 60  0000 C CNN
-F 1 "1uF" H -1650 8200 60  0000 C CNN
-	1    -1650 8400
-	0    1    1    0   
-$EndComp
-$Comp
-L 74HC14 U?
-U 1 1 50FF84C4
-P -1300 8100
-F 0 "U?" H -1150 8200 40  0000 C CNN
-F 1 "74HC14" H -1100 8000 40  0000 C CNN
-	1    -1300 8100
-	1    0    0    -1  
-$EndComp
-$Comp
-L R-US R?
-U 1 1 50FF84AC
-P -2050 8000
-AR Path="/50FF84A7" Ref="R?"  Part="1" 
-AR Path="/50FF84AC" Ref="R?"  Part="1" 
-F 0 "R?" H -2050 8000 60  0000 C CNN
-F 1 "18K" H -2050 7800 60  0000 C CNN
-	1    -2050 8000
-	1    0    0    -1  
-$EndComp
-$Comp
-L R-US R1
-U 1 1 50FF84A7
-P -2650 7650
-F 0 "R1" H -2650 7650 60  0000 C CNN
-F 1 "82K" H -2650 7450 60  0000 C CNN
-	1    -2650 7650
-	0    -1   -1   0   
-$EndComp
-$Comp
-L GND #PWR?
-U 1 1 50FF8497
-P -2550 9050
-F 0 "#PWR?" H -2800 9200 60  0001 C CNN
-F 1 "GND" H -2650 8750 60  0001 C CNN
-	1    -2550 9050
-	1    0    0    -1  
-$EndComp
-$Comp
-L +5V #PWR?
-U 1 1 50FF8481
-P -2550 7350
-F 0 "#PWR?" H -2550 7440 20  0001 C CNN
-F 1 "+5V" H -2550 7440 30  0000 C CNN
-	1    -2550 7350
-	1    0    0    -1  
-$EndComp
-$Comp
-L SPST SW?
-U 1 1 50FF8143
-P -2700 8400
-F 0 "SW?" H -2850 8400 60  0000 C CNN
-F 1 "Reed Switch" H -2700 8150 60  0000 C CNN
-	1    -2700 8400
-	0    -1   -1   0   
 $EndComp
 NoConn ~ 2550 3700
 NoConn ~ 2550 3600
