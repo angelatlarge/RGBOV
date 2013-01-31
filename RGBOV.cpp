@@ -204,7 +204,9 @@ uint16_t drawText(const char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y
 			}
 		}
 		idxChar++;
-		x+=5;
+		x+=6;		/* 	Font is 5 pixels wide, need 1 pixel of space between letters....
+						though this is odd, that should already be factored into the font itself.
+						*/
 	}
 	return x;
 }
@@ -237,12 +239,13 @@ ISR(INT0_vect) {
 			uint8_t nWF = fWheelFreq;
 			char strWF[10];
 			itoa(nWF, strWF, 10);
+			char* strWFfact = strWF+1;
+			strWFfact[0] = '.'; strWFfact++;
+			itoa((fWheelFreq-nWF)*100, strWFfact, 10);
 			int8_t x = 0;
 			eraseGraphic();
-			for (int i=0; i<5; i++) {
-				x = drawText(strWF, 0x00, 0x3F, x, 0);
-				x = drawText(" \0", 0x00, 0x3F, x, 0);
-			}
+			x = drawText(strWF, 0x00, 0x3F, x, 0);
+			x = drawText(" hello, world!", 0x00, 0x3F, x, 0);
 			//~ drawText(strWF, 0xFF, 00, 0, 0);
 			
 			// We want the intensity timer tick to occur 2^(INTENSITY_LEVELS) times per horizontal pixel
