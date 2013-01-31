@@ -7,15 +7,84 @@
 #include <util/delay.h>
 #include "serial.h"
 #include "strfmt.h"
-/* 
-	Timer0 (8-bit):  Wheel speed measurement
-	Timer1 (16-bit): Intensity timebase
-		OCR1A: Wheel speed
-		OCR1B: Intensity
 
-	Two ways of handling hall effect switch:
+/*
+
+# To do
+
+* We need to figure out whether writing to / reading from flash memory
+is slower or the same speed as reading SRAM.  From what I read, 
+flash is fast to read, slow to write, so lets test this.
+
+* Need to try smaller value resistors to make LEDs MOAR BRIGHT! MOAR SHINY!  ME LIKE SHINY!
+
+
+# Some design notes
+
+## Speeding up / slowing down
+
+Currently how quickly we can react to speeding up slowing down
+depends on the bike speed. At 15mpg, the slowest reaction is 1/3s
+If we do not react quickly enough, the text/graphic will be stretched/shrunk
+in the "horizontal" dimension.  Possible ways of solving:
+
+* Moar brain! We could look at ac(/de)celeration and assume (for example), 
+that ac(/de)celeration will be constant. Alternatively, we could assume that 
+ac(/de)celeration will be half of what it was last time. 
+
+An example of using the latter scheme: if after two switch hits the bike is computed to be going 10mph, 
+and in the next switch hit the bike is computed to be moving at 12mph, 
+you assume that for the next wheel rotation the bike will be going at 13mph. 
+One advantage of this approach is that will not affect things 
+when the speed is constant, so it seems like a pretty good solution.
+
+Thinking the 1/2 ac(/de)celeration approach through a bit more, 
+in the previous example displaying as if bike is moving at 13mph actually counts
+acceleration as constant. Here's why: if during one rotation of the wheel, 
+the bike accelerates from 12mph to 14mph, then in the middle of the cycle, 
+the bike speed will be 13mph. So perhaps we should display the graphic 
+for the speed which is current_speed + 1/4 * last_acceleration?
+
+In order to know how this really works, we'd have to know ac(/de)celeration 
+patters. It would be extra helpful to know this at various different speeds.
+Perhaps RGBOV v1.0 can record this data, 
+and transmit to the mothership for latter analysis?
+
+* Moar sensor!  If our hall-effect switch was "stationary" (in the relevant sense), 
+we could add more magnets in order to react to changing speeds quickly. However, our
+sensor is rotating with the wheel itself, therefore, this will not work.  Possible workarounds:
+
+	* Add more hall effect sensors.  Not as cheap as adding magnets, but doable. 
+	With this scheme, a question arises as to when you adjust your text/graphic display:
+	as soon as you know that the wheel spin isn't what you thought it was?  
+	If this happens only with one sensor, the text/graphic never changes mid-display.
+	With two sensors, immediate adjustment affects the graphic half-way through.
+
+	* Put the sensor on the fork, and TRANSMIT sense info to the circuit on the wheel.
+	Even though we will want the wheel to receive information from the stationary part of the bike, 
+	this seems like a difficult solution: lots of communication between the wheel and the bike
+	will eat computing cycles from the wheel circuit. We should consider this once we 
+	work out the comms scheme between the bike and the wheel though.
+
+In the end, a combination of Moar Brains! and Moar Sensors might be the right solution. 
+Even one more sensor will improve response two-fold, assuming that we can find the 
+right way of handling of adjusting mid-graphic/text.
+
+## LEDs
+
+Kirill's RGB SMD LEDs are 5mmx5mm
+
+*/
+
+/* 
+	Timer usage
+	Timer0 (8-bit):  Wheel speed measurement
+	Timer1 (16-bit): Intensity/"horizontal" pixels timebase
+
+	Two ways of handling any interrupt (hall effect switch, timer interrupt for sending pixels):
 		A. Do everything necessary in the interrupt
 		B. Set some "flag" and do everything in main
+	We are doing A for the hall effect switch, and B for the pixel timer interrupt
 		
 	Memory issues
 		We need 220*30 = 6600 pixels
