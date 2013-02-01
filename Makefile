@@ -19,6 +19,8 @@
 ###### http://electrons.psychogenic.com  or   ######
 ###### http://www.psychogenic.com             ######
 ######                                        ######
+###### Further modified by Kirill Shklovsky   ######
+######                                        ######
 ####################################################
 
 
@@ -34,7 +36,7 @@
 ##### make disasm 
 ##### make stats 
 ##### make hex
-##### make writeflash
+##### make writeflash_isp
 ##### make gdbinit
 ##### or make clean
 #####
@@ -149,27 +151,6 @@ LIBS+=$(AVR_DIR)/avr/lib/libm.a
 OPTLEVEL=s
 
 
-#####      AVR Dude 'writeflash' options       #####
-#####  If you are using the avrdude program
-#####  (http://www.bsdhome.com/avrdude/) to write
-#####  to the MCU, you can set the following config
-#####  options and use 'make writeflash' to program
-#####  the device.
-
-
-# programmer id--check the avrdude for complete list
-# of available opts.  These should include stk500,
-# avr910, avrisp, bsd, pony and more.  Set this to
-# one of the valid "-c PROGRAMMER-ID" values 
-# described in the avrdude info page.
-# 
-AVRDUDE_PROGRAMMER= -c usbtiny
-
-# port--serial or parallel port to which your 
-# hardware programmer is attached
-#
-AVRDUDE_PORT=/dev/ttyS1
-
 # Where the files get assembled to
 OBJDIR=obj
 
@@ -274,10 +255,24 @@ endif
 
 
 ##### avrdude options ####
+
+#####      AVR Dude 'writeflash' options       #####
+#####  If you are using the avrdude program
+#####  (http://www.bsdhome.com/avrdude/) to write
+#####  to the MCU, you can set the following config
+#####  options and use 'make writeflash' to program
+#####  the device.
+
+
+#/home/kirill/arduino/arduino-1.0/hardware/tools/avr/bin/avrdude.exe            \
+#        -p m328pu        -C C:\\cygwin\\home\\kirill\\arduino\\arduino-1.0\\hardware\\tools\\avr\\etc\\avrdude.conf \
+#         -c usbtiny \
+#        -U flash:w:obj/RGBOV.hex
+
+
 AVRDUDE_CONF = C:\\cygwin\\home\\kirill\\arduino\\arduino-1.0\\hardware\\tools\\avr\\etc\\avrdude.conf
-#~ ifndef MCU_DUDE
-#~ MCU_DUDE=$(MCU)
-#~ endif
+AVRDUDE_PORT_SERIAL = /dev/ttyS18
+AVRDUDE_PROGRAMMER_ISP = -c usbtiny
 AVRDUDE_COM_OPTS = 			\
 	-p $(PROGRAMMER_MCU) 	
 	#~ -D						\
@@ -285,13 +280,20 @@ AVRDUDE_COM_OPTS = 			\
 ifdef AVRDUDE_CONF
 AVRDUDE_COM_OPTS += -C $(AVRDUDE_CONF)
 endif
-ifndef AVRDUDE_PROGRAMMER
-AVRDUDE_PROGRAMMER	   = -c stk500v2
+ifndef AVRDUDE_PROGRAMMER_ISP
+AVRDUDE_PROGRAMMER_ISP	   = -c stk500v2
 endif
-ifdef ISP_PORT
-ISP_POST_OPTION = -P $(ISP_PORT)
+ifndef AVRDUDE_PROGRAMMER_SERIAL
+AVRDUDE_PROGRAMMER_SERIAL	   = -c avrisp
+endif
+ifdef AVRDUDE_PORT_ISP
+ISP_PORT_OPTION = -P $(AVRDUDE_PORT_ISP)
 endif 
-AVRDUDE_ISP_OPTS = $(ISP_POST_OPTION) $(AVRDUDE_PROGRAMMER)
+ifdef AVRDUDE_PORT_SERIAL
+SERIAL_PORT_OPTION = -P $(AVRDUDE_PORT_SERIAL)
+endif 
+AVRDUDE_ISP_OPTS = $(ISP_PORT_OPTION) $(AVRDUDE_PROGRAMMER_ISP)
+AVRDUDE_SERIAL_OPTS = $(SERIAL_PORT_OPTION) $(AVRDUDE_PROGRAMMER_SERIAL)
 
 ##### automatic target names ####
 TRG=$(OBJDIR)/$(PROJECTNAME).elf
@@ -341,10 +343,10 @@ GENASMFILES=$(filter %.s, $(OBJDEPS:.o=.s))
 
 
 .SUFFIXES : .c .cc .cpp .C .o .elf .s .S \
-	.hex .ee.hex .h .hh .hpp
+	.hex .ee.hex .h .hh .hpp .bin
 
 
-.PHONY: writeflash clean stats gdbinit stats
+.PHONY: writeflash_isp clean stats gdbinit stats
 
 # Make targets:
 # all, disasm, stats, hex, writeflash/install, clean
@@ -360,15 +362,21 @@ hex: $(HEXTRG)
 
 symbols: $(SYMBOLLIST_A) $(SYMBOLLIST_B_RAW)  
 
-writeflash: hex
+writeflash_isp: hex
 	$(AVRDUDE) 				\
 		$(AVRDUDE_COM_OPTS) \
 		$(AVRDUDE_ISP_OPTS) \
 		-U flash:w:$(HEXROMTRG)
 
-install: writeflash
+writeflash_serial: hex
+	$(AVRDUDE) 				\
+		$(AVRDUDE_COM_OPTS) \
+		$(AVRDUDE_SERIAL_OPTS) \
+		-U flash:w:$(HEXROMTRG)
 
-ispload: writeflash
+ispload: writeflash_isp
+
+serload: writeflash_serial
 
 readfuse: readfuses
 

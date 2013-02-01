@@ -63,6 +63,21 @@ value (0xFFFF) and wrap around starting at 0x0000 before the compare match can o
 In many cases this feature is not desirable. An alternative will then be to use the fast PWM mode
 using OCR1A for defining TOP (WGM13:0 = 15) since the OCR1A then will be double buffered.
 
+Returning to the idea of predicting future ac(/de)celeration, consider four scenarios
+a. Constant speed
+b. Constant ac(/de)celeration
+c. Monotonically increasing ac(/de)celeration
+d. Monotonically increasing ac(/de)celeration
+e. Ac(/de)celeration reversal
+
+Let's compare the "flat" algoritm (one that shows graphics based only on last speed) versus "predictive" algorithm.
+The flag design will be the same as predictive in scenario a), worse in b) and c) and better in d) and e) 
+[noting that e is just as subcase of d]. The question we need to answer is 
+"in which regime outside of a) does a commuting biker spend more time?"
+The acceleration/braking graphs do not make it clear, since there the riders were asked
+to accelerate/decelerate as fast as possible, and those graphs make it clear that
+POV display error can be enormous during rapid acceleration and deceleration.
+
 * Moar sensor!  If our hall-effect switch was "stationary" (in the relevant sense), 
 we could add more magnets in order to react to changing speeds quickly. However, our
 sensor is rotating with the wheel itself, therefore, this will not work.  Possible workarounds:
@@ -78,6 +93,15 @@ sensor is rotating with the wheel itself, therefore, this will not work.  Possib
 	this seems like a difficult solution: lots of communication between the wheel and the bike
 	will eat computing cycles from the wheel circuit. We should consider this once we 
 	work out the comms scheme between the bike and the wheel though.
+
+	* Use a non-magnetic speed sensing mechanism. 
+
+		* The most convenient thing would be to mount an optical sensor on the fork, 
+		and sense when the spoke interrupts the light. However, this will also entail
+		transmission of sense data from fork to wheel.
+
+		* Can't think of a good way to do on-wheel optical sensing 
+		(though I can think of several bad ways)
 
 In the end, a combination of Moar Brains! and Moar Sensors might be the right solution. 
 Even one more sensor will improve response two-fold, assuming that we can find the 
