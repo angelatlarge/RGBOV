@@ -12,9 +12,7 @@
 
 # To do
 
-* We need to figure out whether writing to / reading from flash memory
-is slower or the same speed as reading SRAM.  From what I read, 
-flash is fast to read, slow to write, so lets test this.
+* Retest flash memory
 
 * Need to try smaller value resistors to make LEDs MOAR BRIGHT! MOAR SHINY!  ME LIKE SHINY!
 
@@ -89,6 +87,44 @@ right way of handling of adjusting mid-graphic/text.
 
 Kirill's RGB SMD LEDs are 5mmx5mm
 
+## Memory
+
+We need 220*30 = 6600 pixels.
+At 1byte/pixel (4 intensity levels), this is is 6k6 bytes, more than anything but an ATmega1244 has for SRAM
+At 1/2 bytes per pixel (1 bit/color = 8 colors), this is 3k3
+At one bit per pixel (monochrome images) we need 825bytes.
+
+Possible solutions:
+
+	* Moar chip (ATmega1244, Xmega..)
+	* ATmega8515 can have external memory
+	* Storing data in Flash. Question is how fast?
+
+Turns out that we can read images from flash memory fairly quickly, it seems.
+ATmega328 has 32K of flash memory.  Last build had 6728 bytes of flash 
+(which aready includes an 1.4K image), 
+leaving 25k free. Assuming that the program size doubles, that's still enough
+for two images at 1 byte per pixel (palletized). 
+Loading new images may mean flashing a new program on, 
+but that should not be a problem, and we might be able to fix that anyway.
+
+## Bootloader
+
+We might want to be able to load the program/PROGMEM data into the chip 
+without an ISP programmer. For this we need a bootloader.  The way bootloaders
+normally work is a) you reset the chip and mabe b) press some other button at the same time
+When the chip is reset the bootloader runs, and if it desides the conditions are right (see b) above), 
+it tries to download the new program. 
+Or it could look for a program download within some timeout value.
+Arduino has an auto-reset feature where the USB manipulates the DTS line
+to reset the chip, and then the bootloader runs on reset.
+
+All of this should be possible, however, it would be nice to be able to load
+the graphic data onto the chip without loading the whole program. 
+Assuming we can have the code and the data in different segments, 
+and figure out the address of the data, it shouldn't be a problem, 
+though it may mean writing some new bootloader code.
+
 */
 
 /* 
@@ -101,14 +137,6 @@ Kirill's RGB SMD LEDs are 5mmx5mm
 		B. Set some "flag" and do everything in main
 	We are doing A for the hall effect switch, and B for the pixel timer interrupt
 		
-	Memory issues
-		We need 220*30 = 6600 pixels
-		Even at 1byte/pixel that is 6k6 bytes, more than anything but an ATmega1244 has
-		(At one bit per pixel (monochrome images) we need 825bytes.
-		Possible solutions:
-			* Moar chip (ATmega1244, Xmega..)
-			* ATmega8515 can have external memory
-			* Storing data in Flash. Question is how fast?
 */
 
 
@@ -124,6 +152,9 @@ Kirill's RGB SMD LEDs are 5mmx5mm
 #undef USE_SR_SPI
 #define USE_SR_MANUALBB
 
+#undef PROGMEM_GRAPHIC
+#define DRAW_INIT_HELLO
+#define DRAW_WHEEL_SPEED
 
 #ifdef USE_SR_CLASS
 const uint8_t STCP[4] = {PIN_STCP, PIN_STCP, PIN_STCP, PIN_STCP};
@@ -147,7 +178,7 @@ volatile	uint16_t	nTicksPerRevolution;
 
 volatile	uint32_t	nIntensityTimerHitCounter;
 
-#define	HORZ_PIXELS				120
+#define	HORZ_PIXELS				140
 #define	INTENSITY_LEVELS		1
 #define	INTENSITY_COUNTER_MAX	1<<(INTENSITY_LEVELS-1)
 #define VERTICAL_PIXELS			10
@@ -168,7 +199,7 @@ volatile	uint8_t		idxHorizontalPixel;
 volatile	uint8_t		idxIntensityTimeSlice;
 #endif /* INTENSITY_LEVELS>1 */
 
-uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS];
+// uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS];
 /*
 = 
 {
@@ -226,8 +257,16 @@ uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] =
  {00, 00, 42, 17, 17, 17, 42, 00, 38, 17, 17, 17, 00, 00, 00, 3, 3, 23, 00, 43, 3, 3, 00, 58, 48, 48, 48, 53, 53, 48, 53, 62, 60, 60, 60, 61, 61, 60, 61, 00		,00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00 },
  {00, 00, 00, 17, 17, 17, 42, 00, 42, 17, 17, 38, 00, 00, 00, 3, 3, 23, 00, 43, 3, 3, 00, 00, 58, 48, 48, 48, 48, 48, 58, 00, 62, 60, 60, 60, 60, 60, 62, 00		,00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00 }
 };
+*/
+// This is the colored blocks graphic
+
+#ifdef PROGMEM_GRAPHIC
+const uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] PROGMEM = 
+#else /* PROGMEM_GRAPHIC */
 uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] = 
+#endif /* PROGMEM_GRAPHIC */
 {
+//	 0     1     2     3     4     5     6     7     8     9    20     1     2     3     4     5     6     7     8     9    30     1     2     3     4     5     6     7     8     9  40
  {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00},
  {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00},
  {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00},
@@ -239,16 +278,19 @@ uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] =
  {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x00, 0x30, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00},
  {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00}
 };
-*/
+
 
 #if INTENSITY_LEVELS>1
 uint8_t intensityMap[INTENSITY_LEVELS] = { 0, 1, 3, 7 };
 #endif 	
 
+#	ifndef PROGMEM_GRAPHIC
 void eraseGraphic() {
 	memset(&graphic[0][0], 00, VERTICAL_PIXELS*HORZ_PIXELS);
 }
+#endif /* PROGMEM_GRAPHIC */
 
+#	ifndef PROGMEM_GRAPHIC
 //~ void drawText(uint8_t pMemory[VERTICAL_PIXELS][HORZ_PIXELS], uint8_t w, uint8_t h, char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
 uint16_t drawText(const char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
 	uint8_t idxChar = 0;
@@ -263,7 +305,6 @@ uint16_t drawText(const char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y
 			
 			for (int8_t j = 0; j<8; j++) {	// Y loop
 				if ((x+i<HORZ_PIXELS) && (y+j<VERTICAL_PIXELS)) {
-				
 					graphic[y+j][x+i] = (line & 0x1) ? fg : bg;
 				}
 				//~ memset((&pMemory[0][0])+x+i+(y+j)*w, (line & 0x1) ? fg : bg, 1);
@@ -294,11 +335,13 @@ uint16_t drawText(const char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y
 	}
 	return x;
 }
+#endif /* PROGMEM_GRAPHIC */
 
 uint8_t checkUpdateWheelSpeed() {	/* Returns whether speed was updated */
 	uint16_t nNewWheelTick = nHiResTimebaseCount;
-	if ((nNewWheelTick - nLastWheelTick) > 1000)	{		// This is a dumb-ass debouncing circuit
-		nTicksPerRevolution = nNewWheelTick - nLastWheelTick;
+	uint16_t nNewTickCount = nNewWheelTick - nLastWheelTick;
+	if (nNewTickCount > 1000)	{		// This is a dumb-ass debouncing circuit
+		nTicksPerRevolution = nNewTickCount;
 		nLastWheelTick = nNewWheelTick;
 		return 1;
 	} 
@@ -320,17 +363,21 @@ ISR(INT0_vect) {
 		// 2. Set up the timer interrupt 
 		if (nTicksPerRevolution > 0) {
 			float fWheelFreq = WHEEL_SPEED_TIMER_FREQ_FLOAT/(float)nTicksPerRevolution;		// Wheel frequency
-			uint8_t nWF = fWheelFreq;
-			char strWF[10];
-			itoa(nWF, strWF, 10);
-			char* strWFfact = strWF+1;
-			strWFfact[0] = '.'; strWFfact++;
-			itoa((fWheelFreq-nWF)*100, strWFfact, 10);
-			int8_t x = 0;
-			eraseGraphic();
-			x = drawText(strWF, 0x00, 0x3F, x, 0);
-			x = drawText(" hello, world!", 0x00, 0x3F, x, 0);
-			//~ drawText(strWF, 0xFF, 00, 0, 0);
+#			ifndef PROGMEM_GRAPHIC
+#				ifdef DRAW_WHEEL_SPEED			
+					uint8_t nWF = fWheelFreq;
+					char strWF[10];
+					itoa(nWF, strWF, 10);
+					char* strWFfact = strWF+1;
+					strWFfact[0] = '.'; strWFfact++;
+					itoa((fWheelFreq-nWF)*100, strWFfact, 10);
+					int8_t x = 0;
+					eraseGraphic();
+					x = drawText(strWF, 0x00, 0x3F, x, 0);
+					x = drawText(" hello, world!", 0x00, 0x3F, x, 0);
+					//~ drawText(strWF, 0xFF, 00, 0, 0);
+#				endif /* DRAW_WHEEL_SPEED */
+#			endif /* PROGMEM_GRAPHIC */
 			
 			// We want the intensity timer tick to occur 2^(INTENSITY_LEVELS) times per horizontal pixel
 			OCR1A = round(INTENS_TIMER_BASEFREQ_FLOAT/fWheelFreq/(float)(INTENSITY_COUNTER_MAX)/(float)HORZ_PIXELS);		
@@ -362,7 +409,11 @@ void doDisplayUpdate() {
 		uint8_t idxOutByte = 0;
 		for (int idxRow=0; idxRow<VERTICAL_PIXELS; idxRow++) {
 			for (int idxColor = 4; idxColor>=0; idxColor-=2) {	/* start with red (which is binary 00110000) */
+#				ifdef PROGMEM_GRAPHIC
+				uint8_t nColorIntensity = ((0x03<<idxColor) & pgm_read_byte(&(graphic[idxRow][idxHorizontalPixel]))) >> idxColor;
+#				else /* PROGMEM_GRAPHIC */
 				uint8_t nColorIntensity = ((0x03<<idxColor) & graphic[idxRow][idxHorizontalPixel]) >> idxColor;
+#				endif /* PROGMEM_GRAPHIC */
 #				if INTENSITY_LEVELS == 1
 					// No PWM
 					if (nColorIntensity) {
@@ -455,13 +506,19 @@ int main() {
 	//~ drawText(&graphic[0][0], 80, 10, "hello, world\0", 0, 3, 0, 0);
 	//~ drawText(graphic, 80, 10, "hello, world\0", 0, 3, 0, 0);
 
-	uint16_t x = 0;
-	x=drawText("Hel", 0, 3, x, 0);
-	x=drawText("l\0", 0, 2, x, 0);
-	x=drawText("l0\0", 0, 1, x, 0);
-	x=drawText("world\0", 0, 48, x, 0);
-	x=drawText("!\0", 0, 16, x, 0);
-
+#	ifndef PROGMEM_GRAPHIC
+#		ifdef DRAW_INIT_HELLO	
+			uint16_t x = 0;
+			x=drawText("1234567890\0", 0, 0xFF, x, 0);
+			/*
+			x=drawText("Hel", 0, 3, x, 0);
+			x=drawText("l\0", 0, 2, x, 0);
+			x=drawText("l0\0", 0, 1, x, 0);
+			x=drawText("world\0", 0, 48, x, 0);
+			x=drawText("!\0", 0, 16, x, 0);
+			*/
+#		endif /* DRAW_INIT_HELLO */
+#	endif /* PROGMEM_GRAPHIC */
 	//~ void drawText(uint8_t* pMemory/*[VERTICAL_PIXELS][HORZ_PIXELS]*/, uint8_t w, uint8_t h, char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
 	
 	// Wheel speed measurement timer = timer 0
