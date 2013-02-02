@@ -178,7 +178,7 @@ though it may mean writing some new bootloader code.
 
 #undef PROGMEM_GRAPHIC
 #define DRAW_INIT_HELLO
-#define DRAW_WHEEL_SPEED
+#undef DRAW_WHEEL_SPEED
 
 #ifdef USE_SR_CLASS
 const uint8_t STCP[4] = {PIN_STCP, PIN_STCP, PIN_STCP, PIN_STCP};
@@ -202,7 +202,7 @@ volatile	uint16_t	nTicksPerRevolution;
 
 volatile	uint32_t	nIntensityTimerHitCounter;
 
-#define	HORZ_PIXELS				140
+#define	HORZ_PIXELS				120
 #define	INTENSITY_LEVELS		1
 #define	INTENSITY_COUNTER_MAX	1<<(INTENSITY_LEVELS-1)
 #define VERTICAL_PIXELS			10
@@ -214,16 +214,17 @@ volatile	uint32_t	nIntensityTimerHitCounter;
 #define WHEEL_SPEED_TIMER_FREQ_INT		(F_CPU/WHEEL_SPEED_TIMER_PRESCALER/WHEEL_SPEED_TIMER_OCR)
 #define WHEEL_SPEED_TIMER_FREQ_FLOAT	((float)F_CPU/(float)WHEEL_SPEED_TIMER_PRESCALER/(float)WHEEL_SPEED_TIMER_OCR)
 
-#define INTENS_TIMER_PRESCALER			1
-#define INTENS_TIMER_PRESC_BITS			(0<<CS12)|(0<<CS11)|(1<<CS10)
-#define INTENS_TIMER_BASEFREQ_FLOAT		((float)F_CPU/(float)INTENS_TIMER_PRESCALER)
+//#define INTENS_TIMER_PRESCALER			1
+//#define INTENS_TIMER_PRESC_BITS			(0<<CS12)|(0<<CS11)|(1<<CS10)
+//#define INTENS_TIMER_BASEFREQ_FLOAT		((float)F_CPU/(float)INTENS_TIMER_PRESCALER)
+uint8_t		nIntensTimerPrescaler;
 
 volatile	uint8_t		idxHorizontalPixel;
 #if INTENSITY_LEVELS>1
 volatile	uint8_t		idxIntensityTimeSlice;
 #endif /* INTENSITY_LEVELS>1 */
 
-// uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS];
+uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS];
 /*
 = 
 {
@@ -284,11 +285,12 @@ uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] =
 */
 // This is the colored blocks graphic
 
+/*
 #ifdef PROGMEM_GRAPHIC
 const uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] PROGMEM = 
-#else /* PROGMEM_GRAPHIC */
+#else // PROGMEM_GRAPHIC
 uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] = 
-#endif /* PROGMEM_GRAPHIC */
+#endif // PROGMEM_GRAPHIC 
 {
 //	 0     1     2     3     4     5     6     7     8     9    20     1     2     3     4     5     6     7     8     9    30     1     2     3     4     5     6     7     8     9  40
  {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00},
@@ -302,19 +304,20 @@ uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] =
  {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x00, 0x30, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00},
  {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00}
 };
+*/
 
 
 #if INTENSITY_LEVELS>1
 uint8_t intensityMap[INTENSITY_LEVELS] = { 0, 1, 3, 7 };
 #endif 	
 
-#	ifndef PROGMEM_GRAPHIC
+#ifndef PROGMEM_GRAPHIC
 void eraseGraphic() {
 	memset(&graphic[0][0], 00, VERTICAL_PIXELS*HORZ_PIXELS);
 }
 #endif /* PROGMEM_GRAPHIC */
 
-#	ifndef PROGMEM_GRAPHIC
+#ifndef PROGMEM_GRAPHIC
 //~ void drawText(uint8_t pMemory[VERTICAL_PIXELS][HORZ_PIXELS], uint8_t w, uint8_t h, char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
 uint16_t drawText(const char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y) {
 	uint8_t idxChar = 0;
@@ -362,11 +365,10 @@ uint16_t drawText(const char * str, uint8_t bg, uint8_t fg, int16_t x, int16_t y
 #endif /* PROGMEM_GRAPHIC */
 
 uint8_t checkUpdateWheelSpeed() {	/* Returns whether speed was updated */
-	uint16_t nNewWheelTick = nHiResTimebaseCount;
-	uint16_t nNewTickCount = nNewWheelTick - nLastWheelTick;
+	uint16_t nNewTickCount = nHiResTimebaseCount;
 	if (nNewTickCount > 1000)	{		// This is a dumb-ass debouncing circuit
 		nTicksPerRevolution = nNewTickCount;
-		nLastWheelTick = nNewWheelTick;
+		nHiResTimebaseCount = 0;
 		return 1;
 	} 
 	return 0;
@@ -404,9 +406,34 @@ ISR(INT0_vect) {
 #			endif /* PROGMEM_GRAPHIC */
 			
 			// We want the intensity timer tick to occur 2^(INTENSITY_LEVELS) times per horizontal pixel
-			OCR1A = round(INTENS_TIMER_BASEFREQ_FLOAT/fWheelFreq/(float)(INTENSITY_COUNTER_MAX)/(float)HORZ_PIXELS);		
-			
-			dputsi("INTENSITY_COUNTER_MAX: ", INTENSITY_COUNTER_MAX);
+			// ... try at min prescaler
+			uint32_t nCounterVal = round(F_CPU/fWheelFreq/(float)(INTENSITY_COUNTER_MAX)/(float)HORZ_PIXELS);
+			if (nCounterVal > 0xFFFF) {
+				// Must use a prescaler higher than one. Using 8
+				nIntensTimerPrescaler = 8;
+				TCCR1B = 0
+					|(0<<CS12)|(1<<CS11)|(8<<CS10)			// Prescaler=1
+					|(0<<WGM13)|(1<<WGM12)					// CTC Mode
+					;
+
+			} else {
+				// Prescaler = 1 is sufficient
+				nIntensTimerPrescaler = 1;
+				TCCR1B = 0
+					|(0<<CS12)|(0<<CS11)|(1<<CS10)			// Prescaler=1
+					|(0<<WGM13)|(1<<WGM12)					// CTC Mode
+					;
+			}
+			OCR1A = round(F_CPU/float(nIntensTimerPrescaler)/fWheelFreq/(float)(INTENSITY_COUNTER_MAX)/(float)HORZ_PIXELS);
+
+#undef DPRINTBTH
+#ifdef DPRINTBTH
+//			dputsi("INTENSITY_COUNTER_MAX: ", INTENSITY_COUNTER_MAX);
+			dputsl("nTicksPerRevolution: ", nTicksPerRevolution);
+			dputsf("fWheelFreq: ", fWheelFreq, 2);
+			dputsi("Prescaler: ", nIntensTimerPrescaler);
+			dputsl("OCR1A: ", OCR1A);
+#endif
 
 			// 3. Reset the pixel position
 #			if INTENSITY_LEVELS>1			
@@ -434,9 +461,9 @@ void doDisplayUpdate() {
 		for (int idxRow=0; idxRow<VERTICAL_PIXELS; idxRow++) {
 			for (int idxColor = 4; idxColor>=0; idxColor-=2) {	/* start with red (which is binary 00110000) */
 #				ifdef PROGMEM_GRAPHIC
-				uint8_t nColorIntensity = ((0x03<<idxColor) & pgm_read_byte(&(graphic[idxRow][idxHorizontalPixel]))) >> idxColor;
+					uint8_t nColorIntensity = ((0x03<<idxColor) & pgm_read_byte(&(graphic[idxRow][idxHorizontalPixel]))) >> idxColor;
 #				else /* PROGMEM_GRAPHIC */
-				uint8_t nColorIntensity = ((0x03<<idxColor) & graphic[idxRow][idxHorizontalPixel]) >> idxColor;
+					uint8_t nColorIntensity = ((0x03<<idxColor) & graphic[idxRow][idxHorizontalPixel]) >> idxColor;
 #				endif /* PROGMEM_GRAPHIC */
 #				if INTENSITY_LEVELS == 1
 					// No PWM
@@ -569,7 +596,8 @@ int main() {
 		|(0<<WGM11)|(0<<WGM10)				// CTC mode
 		;
 	TCCR1B = 0
-		|(INTENS_TIMER_PRESC_BITS)			// Prescaler
+		|(0<<CS12)|(0<<CS11)|(1<<CS10)		// Use prescaler one: useful for debugging
+		//|(INTENS_TIMER_PRESC_BITS)			// Prescaler
 		|(0<<WGM13)|(1<<WGM12)				// CTC Mode
 		;
 	OCR1A = 0xFFFF;							// Not doing anything until we get a wheel speed
