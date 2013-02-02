@@ -1,3 +1,7 @@
 RGBOV.bak
 RGBOV-cache.lib
 obj
+./make_text_graphic.exe
+.gitignore
+make_text_graphic.exe
+we_hold.c.snippet
