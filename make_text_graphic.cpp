@@ -14,29 +14,32 @@ int main(int argc, char *argv[]) {
 	char strSampleText[] = "The quick brown fox jumped over the lazy dog";
 	char * strText = strSampleText;
 	if (argc>0) {
-		printf(argv[1]);
+		//~ printf(argv[1]);
 		strText = argv[1];
-	}
-	if (argc>1) {
-		h = atol(argv[2]);
-	}
-	if (argc>2) {
-		v = atol(argv[3]);
-	}
-	printf("%s %d %d", strText, h, v);
-	uint8_t* graphic = (uint8_t*)malloc(sizeof(uint8_t)*HORZ_PIXELS*VERTICAL_PIXELS);
+	} 
+	if (argc>1) { h = atol(argv[2]);}
+	if (argc>2) { v = atol(argv[3]);}
+	if (argc>3) { bg = atol(argv[4]);}
+	if (argc>4) { fg = atol(argv[5]);}
+	//~ printf("%s %d %d", strText, h, v);
+	uint8_t* graphic = (uint8_t*)malloc(sizeof(uint8_t)*h*v);
+	memset(graphic, bg, sizeof(uint8_t)*h*v);
 	drawText(graphic, h, v, strText, bg, fg, 0, 0);
 	printf("{\n");
-	for (int y=0; y<VERTICAL_PIXELS; y++) {
+	for (int y=0; y<v; y++) {
 		printf("{");
-		for (int x=0; x<HORZ_PIXELS; x++) {
-			uint8_t byte = graphic[y*HORZ_PIXELS+x];
-			printf("%#0.2x", byte);
-			if (x<(HORZ_PIXELS-1)) {
+		for (int x=0; x<h; x++) {
+			uint8_t byte = graphic[y*h+x];
+			if (byte==0) {
+				printf("0x00");
+			} else {
+				printf("%#0.2x", byte);
+			}
+			if (x<(h-1)) {
 				printf(", ");
 			}
 		}
-		if (y<VERTICAL_PIXELS-1) {
+		if (y<v-1) {
 			printf("},\n");
 		} else {
 			printf("}\n");
