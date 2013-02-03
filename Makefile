@@ -507,7 +507,15 @@ clean:
 	$(REMOVE) $(GENASMFILES)
 	$(REMOVE) $(HEXTRG)
 	
+make_text_graphic: make_text_graphic.cpp drawtext.c
+	gcc -o make_text_graphic make_text_graphic.cpp drawtext.c -I.
 
+
+genImageArrayC: generateImageArray.c lodepng.c
+	gcc -o generateImageArray generateImageArray.c lodepng.c -I.
+
+genImageArrayCPP: generateImageArray.cpp lodepng.cpp
+	gcc -o generateImageArray generateImageArray.cpp lodepng.cpp -I.
 
 #####                    EOF                   #####
 
