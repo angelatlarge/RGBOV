@@ -239,6 +239,54 @@ At three banks, we can output 24 bits at a time. At 24 parallel bits, we only ne
 4 bits of each SR to control 90 bits.  At 16 clocks/iteration * 4 iteration we have 
 64 clocks/load, and also we would need 24 shift registers :)
 
+## Double-sided setup, cost, and current
+
+ATmega328 has 28 total pins. 5 of these are power/REF pins, 1 is the RESET pin. 
+2 are needed for bluetooth, and 1 for hall-effect sensor, leaving 19 GIO pins free.
+This means we can comfortably have 2 banks of SRs.
+But it gets worse if we wanted to do two lines of LEDs/side, (120 LEDs total = 360 data lines).
+At minimum, this will require 45(!) shift registers. 
+Using a banked setup will require 48 shift registers at minimum.
+With 48 SRs you do have 384 bits of output, which means 128 leds, 
+which works out to 32/spoke/side, or 192 mm of continuous coverage.
+
+However, supporting 4 banks on one chip is not possible.
+A single ATmega328 can comfortable support 2 banks without daisychaining.
+ATmega16L has more IO lines (30 after reset/TX/RX and power), but even that 
+isn't enough to support 4 banks. So, we'll probably have to daisychain 
+or to have two ATmega328s who can talk to each other.
+
+Crap!  Turns out that HC595 officially only allows 70mA max total output:
+this works out to 8.75mA/LED if all LEDs are on.
+SN74HC595, M74HC595, and CDXXHC4094 are the same or worse
+
+One high-current shift register is TPIC6C595, 
+These cost $2/piece on Ebay and $1/piece on Digikey  
+(when you buy 50!)
+
+Transistor array $10/$12/$13 for 50 on ebay
+Digikey sells 7 darlington arrays for $30 / 100 ($15/50)
+
+The LED driver chips, on the other hand, can sourcd 25mA on each pin, 
+and 400mA total, which works out to 25mA/pin.  They are $2.50/chip. 
+For a double-sided, double-spoked wheel one would need 20 of these chips.
+They cost $51.60 on Digikey for 25 of these.
+
+So, going with the shift register setup for double-sided double-spoked setup you pay
+$10 / 200 SMD LEDs on ebay
+$5  / 50 SMD CD74HC4094 on ebay
+$10($13) / 50 th/smd darlington arrays on Ebay.
+$5 bluetooth (ebay)
+SMD resistors (cheap)
++PCB. Total cost: about $30
+
+My bike: 240mm (=9.5") rim to center. A 1" thick PCB will be 10 square inches.  
+It will cost $50/board (must be multiples of 3! from OSH Park) ouch.
+If we stack 5mm leds together this is 48 leds.  
+But they could be stacked towards the end for better text.
+
+
+
 ## Bootloader
 
 We might want to be able to load the program/PROGMEM data into the chip 
