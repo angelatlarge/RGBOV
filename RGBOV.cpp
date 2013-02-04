@@ -144,27 +144,100 @@ Doubling the update rate to 32/pixel gives us 500 clocks between updates, so tha
 but it would seem that the image would still appear pixelated. 
 Further doubling is impossible, as 64 updates/pixel only leaves 250 clock cycles for each update, which is not enough.
 
-At 20Mhz, 4 intensities (meaning 16 timer hits/h_pixel), we have about 932 clock cycles available for computation 
-between each timer hit. 
-, 
-meaning that given 932 clock cycles we could only get three updates to the leds for each pixel.
+### Parallel loading
 
-If we 
-write this routine in assembly we might 
+While each bit in a shift register MUST BE loaded serially, we can load the shift registers in parallel. 
 
-Possible solutions:
+#### Parallel loading: Setup A
 
-	* Moar chip (ATmega1244, Xmega..)
-	* ATmega8515 can have external memory
-	* Storing data in Flash. Question is how fast?
+7 shift registers have their DS (data) line connected to separate pins of the same port, 
+and all of them have their clock (SHCP) line on the same (eighth) pin. 
+Assuming that data line and clock line can be set silmutaneosely reliably 
+(that is what we do now), the pseudocode, for scanline-decomposed image will look like this:
 
-Turns out that we can read images from flash memory fairly quickly, it seems.
-ATmega328 has 32K of flash memory.  Last build had 6728 bytes of flash 
-(which aready includes an 1.4K image), 
-leaving 25k free. Assuming that the program size doubles, that's still enough
-for two images at 1 byte per pixel (palletized). 
-Loading new images may mean flashing a new program on, 
-but that should not be a problem, and we might be able to fix that anyway.
+	Loop:
+		Clear port A
+		(Clear port B)
+		Load data + STCP on port A A
+		(Load data + STCP lines B)
+		...
+		Loop control
+
+Theoretically, this will allow us to load 7 bits of data every three clock 
+and 14 bits of data every five clock cycles.  
+We need 90 bits of data for each scanline, which will require 12 shift registers (SRs),
+so lets assume two parallel banks, which will give us up to 14 SRs. 
+Full load will require 8 loop iterations, one for each bit.
+At five clocks/loop iteration, the maximum performance here is only 40 clocks, 
+although we will pay for it in memory space 
+by not being able to use one bit out of every 8.
+if, as before at 20Mhz, 30mph(=6Hz), 200 horz pixels we have 16K cycles / pixel, 
+with this method we might be able to do 265 cycles/pixel:
+At 265 cycles/pixel, each cycle will have 62 clocks: 
+if we only need 40 clock to push out the data, then this looks more doable, 
+though it is a bit tight.
+256 cycles are needed to produce 8 intensity levels, 
+but presumably it will make 4-level graphics not look pixellated.
+
+#### Parallel loading: Setup A
+
+It is also possible that data really must be loaded PRIOR to clock line (SHCP) going high, 
+then we might put all clock lines on one port, and have a port for each bank of data lines.
+Now each bank can have 8 up to SRs, meaning 16 bits of info out for each loop
+The pseudocode  would look like this:
+
+	Loop:
+		Clear port A
+		Clear port B
+		Load data + STCP on port A A
+		Load data + STCP lines B
+		Raise the clock line
+		Loop control
+
+This means a minimum of 6 clocks for each bit, meaning 48 clocks minimum to load (up to) 
+128 bits or 42 RGB leds.
+
+### Instruction execution times
+
+So after looking at the datasheet a bit longer, the assumption of 1 clock/instruction seem unwarranted
+(I believed you Atmel!).  Let's try to annotate the last pseudocode with clock times
+
+	Loop:
+		OUT				# Lower SHCP, 1 clock
+		LPM				# Load program memory to register for bank A + advance, 3 clocks
+		LPM				# Load program memory to register for bank B + advance, 3 clocks
+		OUT				# Output bank A, 1 clock
+		OUT				# Output bank B, 1 clock
+		OUT				# Raise SHCP, 1 clock
+		???				# Decrement something and jump if equal		2 clocks
+
+Therefore, in the scenario looks like loading of 65-128 bits of data will take 
+12 clocks * 8 bits = 96 clocks. This will require 16 shift registers, instead of 12, 
+but yields an effective data transfer rate of 0.75 clocks/bit
+Now 256 updates/pixel look unrealistic, but 128 updates/pixel looks possible.
+128 updates/pixel would mean that at 4 intensities we can blink the LED 8 times
+even for the lowest intensity, which isn't so bad.
+
+Assuming that data line + SHCP line can be throttled at the same time, 
+we save only one clock cycle/bit, i.e., and lose 1 SR/bank, meaning that to load 57-112 bits of data
+will take 11 clocks * 8 bits = 88 clocks (0.78 clocks/bit)
+
+What if instead of using two banks we daisychain two SRs?  THen it will take 16 iterations of the loop 
+to load the data, and even if each iteration is 10 cycles, it will take 160 clocks to load the data.
+Therefore daisychaining SRs will result in longer loading times.
+
+What, on the other hand, if we not use all the output bits on the SRs?  
+In the "reliable" configuration, we have 16SRs, 
+meaning that to achieve 90 bits we only need 6 of each 8 bits of the SR.
+Each loop iteration now takes 12 clocks, but we only need 6 iterations, 
+so we have 72 clock cycles/load.
+
+We can sacrifice more bits on each SR, and add more SRs to gain more speed.
+In this case we will need to add another bank.
+This will add 4 clocks to each loop iteration, yielding 16 clocks/iteration.
+At three banks, we can output 24 bits at a time. At 24 parallel bits, we only need
+4 bits of each SR to control 90 bits.  At 16 clocks/iteration * 4 iteration we have 
+64 clocks/load, and also we would need 24 shift registers :)
 
 ## Bootloader
 
