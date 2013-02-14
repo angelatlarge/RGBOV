@@ -17,6 +17,8 @@
 
 # Some design notes
 
+## How much current can batteries source?
+
 ## Speeding up / slowing down
 
 Currently how quickly we can react to speeding up slowing down
@@ -269,8 +271,8 @@ Digikey sells 7 darlington arrays for $30 / 100 ($15/50)
 
 The LED driver chips, on the other hand, can sourcd 25mA on each pin, 
 and 400mA total, which works out to 25mA/pin.  They are $2.50/chip. 
-For a double-sided, double-spoked wheel one would need 20 of these chips.
-They cost $51.60 on Digikey for 25 of these.
+For a double-sided, double-spoked wheel, i.e. one with 120 leds (=360 bits) 
+one would need 23 of these chips. They cost $51.60 on Digikey for 25 of these.
 
 So, going with the shift register setup for double-sided double-spoked setup you pay
 $10 / 200 SMD LEDs on ebay
@@ -280,29 +282,97 @@ $5 bluetooth (ebay)
 SMD resistors (cheap)
 +PCB. Total cost: about $30
 
-My bike: 240mm (=9.5") rim to center. A 1" thick PCB will be 10 square inches.  
+My bike: 240mm (=9.5") rim to center. A 1" wide PCB will be 10 square inches.  
 It will cost $50/board (must be multiples of 3! from OSH Park) ouch.
 If we stack 5mm leds together this is 48 leds.  
 But they could be stacked towards the end for better text.
 
+There is also WorldSemi (there's a reputable name!) WS2803 can drive 
+18 bits and sells for $2/piece in quantities of 10, $
+40 for 25 and $70/50 on ebay.
+In a double spoke, double-sided setup 20 of these chips will be necessary.
+The chip looks nice: it can provide constant current using only 1 resistor, 
+provides 8-bit PWM capabilities, runs on any VCC up to 6V, 
+can do up to 25 Mhz clock, and can source up to 30mA of current on eac pin.
+There is a complicated formula for calculating the MAXIMUM I_OUT of the device 
+that I have not worked through.
+These chips having 8-bit pwm, require 144 bits of data to set the PWM parameters.
+Assuming that the pallete is in SRAM while the image is in Flash, 
+using bit-bangning techniques, and assuming PARALLEL LOADING, 
+i.e. shared clock, and 8 different WS2803 on 8 different data lines (=48 total LEDs maximuj)
+the inner loop of the data send should look like this:
 
+	OUT 	# Lower clock, 1 cycle
+	OUT 	# Set data for bit n, 1 cycle
+	OUT 	# Raise clock, 1 cycle
+
+This needs to happen for 144 bits, so this process will take 432 clocks, 
+without even counting loading the data from flash. 
+Even though WS2803 can be cascaded, given the fact that WS2803 has no latch pins, 
+using cascaded WS2803 will result in skewed images.
+
+Ebay also has TLC5940 chip, which is a 16-channel PWM led driver, 
+this one having a latch. In quantities this chip goes for about $1/chip, 
+in contrast to Digikey's LED drivers which are $2/chip.  
+Even though TLC5940 is more expensive than WS2803, and, inconveniently has
+16 output lines, rather than 18, it might be a better choice, 
+since having a latch it can be cascaded for our purposes.  
+Sparkfun users do not some weirdness about PWM-ing with these chips, 
+but there is a book on it here:
+https://sites.google.com/site/artcfox/demystifying-the-tlc5940
+We would need 6 chips /side /spoke, or 24 chips for a two-sided double-spoked wheel.
+As an additional benefit, using dot-correction mode, TLC5940
+needs only 96 bits of data (6 bits/line), not 144 bits like the WS2803.
+This means that given parallel TLC5940 chips, we have 42 LEDs/bank, 
+and data send / bank will take 3*96=288 clock cycles (minimum)
+Using cascaded chips means double the transmission time, i.e. 576 clocks/send.
+
+With two dedicated send registers, four total banks (i.e. two chips daisychained)
+(i.e. two sides, 2 spokes/side), 1 byte/pixel palletized image,
+and only 15 channels/chip (for ease of xmission) 
+we will have up to 40 pixels / side /spoke 
+(8 chips/bank each having 15 output lines, i.e, 5 pixels).
+This requires 32 chips, and correspondingly would cost roughly $32
+Our load routine looks as follows then:
+
+Loop A: for each cascade, repeat twice
+	Loop B: loop pixels, repeats 5 times ()
+		LPM				# Load program memory for bank A: one pixel. 3 cycles
+		LPM				# Load program memory for bank B: one pixel. 3 cycles
+
+		???				# Pallete lookup bank A. 1 cycle
+		???				# Pallete lookup bank B. 1 cycle
+
+		Loop C: for each color (repeats 3 times)
+			Loop D: for each bit (repeats 6 times we are using 6 bit words)
+				OUT			# Lower clock all banks, 1 cycle
+				OUT			# Set data for bit n, 1 cycle
+				OUT			# Raise clock, 1 cycle
+				???			# Test and repeat, 2 cycles
+				# loop D takes (3+2)*6=30 cycles
+
+			???				# Advance colors for all banks (4 cycles)
+			???				# Test and repeat (2 cycles)
+			# Now we have sent 3 words to each bank.
+			# Loop C takes (30+4+2)*3=108 cycles
+
+	
+		???					# Test and repeat (2 cycles)
+		# Loop B takes (6+2+2+108)*5 = 590 
+
+	???					# Test and repeat (2 cycles)
+	# Loop A takes (590+2)*2 = 1184 cycles
+
+Given that we have 16000 clock cycles between each pixel (@200 pixels @ 30mph), 
+this should be sufficient.
+
+Some people on Sparkfun recommend the TLC5952, but it isn't available on Ebay, 
+and it costs $4 on Digikey.
 
 ## Bootloader
 
-We might want to be able to load the program/PROGMEM data into the chip 
-without an ISP programmer. For this we need a bootloader.  The way bootloaders
-normally work is a) you reset the chip and mabe b) press some other button at the same time
-When the chip is reset the bootloader runs, and if it desides the conditions are right (see b) above), 
-it tries to download the new program. 
-Or it could look for a program download within some timeout value.
-Arduino has an auto-reset feature where the USB manipulates the DTS line
-to reset the chip, and then the bootloader runs on reset.
-
-All of this should be possible, however, it would be nice to be able to load
-the graphic data onto the chip without loading the whole program. 
-Assuming we can have the code and the data in different segments, 
-and figure out the address of the data, it shouldn't be a problem, 
-though it may mean writing some new bootloader code.
+Bootloader is working. We may way to tweak the bootloader to load just the 
+PROGMEM data, and not the whole program, but this is not critical right now.
 
 */
 
@@ -539,7 +609,7 @@ uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] =
 */
 
 /*
-// Biblical verse: 200 pixels, red on blue
+// Random biblical verse: 200 pixels, red on blue
 #ifdef PROGMEM_GRAPHIC
 const uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] PROGMEM = 
 #else // PROGMEM_GRAPHIC
@@ -559,7 +629,7 @@ uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] =
 };
 */
 
-// Biblical verse: 200 pixels wide, black on white
+// Random biblical verse: 200 pixels wide, black on white
 #ifdef PROGMEM_GRAPHIC
 const uint8_t graphic[VERTICAL_PIXELS][HORZ_PIXELS] PROGMEM = 
 #else // PROGMEM_GRAPHIC
@@ -860,34 +930,5 @@ int main() {
 			doDisplayUpdate();
 		}
 	}
-		
-		//~ for (int idxByte = 0; idxByte<4; idxByte++) {
-			//~ for (int j = 0; j<8; j++) {
-				//~ uint8_t nData[4] = {0x00, 0x00, 0x00, 0x00};
-				//~ nData[idxByte] = 01<<j;
-				//~ sr.forceWriteData(0, 4, nData);	
-				//~ sr.writeByte(idxByte, nData[idxByte]);
-				//~ _delay_ms(250);
-				//~ nData[idxByte] = 0;
-			//~ }
-		//~ }
-		//~ sr.writeByte(0, 01);
-		/*
-		for (
-		
-		uint8_t nDataA[4] = {0xFF, 0xFF, 0xFF, 0xFF};
-		//~ for (int i = 0; i<4; i++) {
-			//~ sr.writeByte(i, nDataA[i]);
-		//~ }
-			sr.writeData(0, 4, nDataA);	
-		 _delay_ms(1000);
-		
-		uint8_t nDataB[4] = {0x00, 0x00, 0x00, 0x00};
-		//~ for (int i = 0; i<4; i++) {
-			//~ sr.writeByte(i, nDataB[i]);
-		//~ }
-		sr.writeData(0, 4, nDataB);	
-		 _delay_ms(1000);
-	*/
-	//~ }
+
 }
