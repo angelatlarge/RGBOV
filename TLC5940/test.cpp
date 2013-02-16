@@ -60,9 +60,9 @@ int main() {
 	//~ for (;;) {
 	
 	//~ static uint8_t nIntensityValueArray[3] = {0, 0, 0};
-	static uint8_t idxColor;
+	static uint8_t nColorMask = 1;
+	static uint8_t nColorValue = 0;
 	static uint8_t idxDir=1;
-	static uint8_t anLEDColors[3] = {0, 0, 0};
 	static uint8_t anLEDOutput[3] = {0xFF, 0x00, 0x00};
 	
 	
@@ -102,22 +102,25 @@ int main() {
 		_delay_ms(5);
 #ifndef XXX		
 		if (
-				((idxDir) && (anLEDColors[idxColor] >= 8))
+				((idxDir) && (nColorValue >= 8))
 			||
-				((!idxDir) && (anLEDColors[idxColor] == 0x00))
+				((!idxDir) && (nColorValue == 0x00))
 			)
 				if ( (idxDir = !idxDir) ) {
-					if (idxColor++> 2) {
-						idxColor = 0;
+					if (nColorMask++> 7) {
+						nColorMask = 0;
 					}
 				}
 		if (idxDir) 
-			anLEDColors[idxColor]++;
+			nColorValue++;
 		else 
-			anLEDColors[idxColor]--;
+			nColorValue--;
 		
-		for (int i=0;i<3;i++) {
-			anLEDOutput[i] = ((uint16_t)1<<(uint16_t)anLEDColors[i])-(uint16_t)1;
+		for (int idxColor=0;idxColor<3;idxColor++) {
+			anLEDOutput[idxColor] = 0;
+			if (nColorMask & (1<<idxColor) ) {
+				anLEDOutput[idxColor] = (1<<nColorValue)-1;
+			}
 		}
 #endif		
 	}
