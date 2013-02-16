@@ -107,8 +107,8 @@ int main() {
 				((!idxDir) && (nColorValue == 0x00))
 			)
 				if ( (idxDir = !idxDir) ) {
-					if (nColorMask++> 7) {
-						nColorMask = 0;
+					if (++nColorMask > 7) {
+						nColorMask = 1;
 					}
 				}
 		if (idxDir) 
