@@ -31,9 +31,22 @@ struct palimage_t {
 	int h;
 };
 
-void printArrayData(unsigned char * data, int w, int h) {
+void printArrayData(unsigned char * data, int w, int h, char * name, int width_div) {
 	//~ printf("Print array data %d %d", w, h);
-	printf("{\n");
+	char strWidth[10];
+	sprintf(strWidth, "%d", w);
+	if (width_div>1) {
+		if (w%width_div) {
+			fprintf(stderr, "ERROR: width_div specified to printArrayData, but width doesn't divide");
+		} else {
+			sprintf(strWidth, "%d * %d", w/width_div, width_div);
+		}
+	}
+	if (h>1) {
+		printf("uint8_t %s[%d][%s] = {\n", name, h, strWidth);
+	} else {
+		printf("uint8_t %s[%s] = {\n", name, strWidth);
+	}
 	for (int y=0; y<h; y++) {
 		// Open brace if more than one row
 		if (h>1) { printf("{ "); }
@@ -159,7 +172,7 @@ palimage_t * palletizePNGdata(unsigned char * pngData, unsigned int w, unsigned 
 }
 
 void saveAsPNG(palimage_t * img, const char* filename, unsigned int intcount) {
-	printf("Saving to PNG");
+	//~ printf("Saving to PNG");
 	// Create an output memory thing
 	unsigned char * imgdata = malloc( (img->w) * (img->h) * 3 );
 	unsigned char * t =imgdata;
@@ -216,7 +229,7 @@ int main(int argc, char *argv[]) {
 		//~ if (1) {
 		if (nBitDepth > 2) {
 			// Print the palette data
-			printArrayData(newdata->palette, newdata->palcount*3, 1);
+			printArrayData(newdata->palette, newdata->palcount*3, 1, "palette", 3);
 		} else {
 			// Collapse the palette and the pixel data
 			for (int y=0; y<h; y++) {
@@ -232,7 +245,7 @@ int main(int argc, char *argv[]) {
 		}
 		
 		// Print the pixel and palette data
-		printArrayData(newdata->pixdata, w, h);
+		printArrayData(newdata->pixdata, w, h, "graphic", 1);
 	} else {
 		// Palettization failed
 		retval = 1;
