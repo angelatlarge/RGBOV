@@ -124,25 +124,27 @@ PROJECTNAME=RGBOV
 # (list all files to compile, e.g. 'a.c b.cpp as.S'):
 # Use .cc, .cpp or .C suffix for C++ files, use .S 
 # (NOT .s !!!) for assembly source code files.
-VPATH += :../avr_libs/sr595/
-VPATH += :../avr_libs/serial/
-VPATH += :../avr_libs/strfmt/
+VPATH += :../../avr_libs/sr595/
+VPATH += :../../avr_libs/serial/
+VPATH += :../../avr_libs/strfmt/
+VPATH += :../shared/
 	
 PRJSRC+=RGBOV.cpp
-PRJSRC+=../avr_libs/sr595/sr595.cpp
-PRJSRC+=../avr_libs/serial/serial.c
-PRJSRC+=../avr_libs/serial/strfmt.cpp
+PRJSRC+=load.cpp
+PRJSRC+=../../avr_libs/sr595/sr595.cpp
+PRJSRC+=../../avr_libs/serial/serial.c
+PRJSRC+=../../avr_libs/serial/strfmt.cpp
 
 # additional includes (e.g. -I/path/to/mydir)
-#~ INC+=-I../avr_libs/Arduino
-INC+=-I../avr_libs/sr595 
-INC+=-I../avr_libs/serial
-INC+=-I../avr_libs/strfmt
+#~ INC+=-I../../avr_libs/Arduino
+INC+=-I../../avr_libs/sr595 
+INC+=-I../../avr_libs/serial
+INC+=-I../../avr_libs/strfmt
 
 # libraries to link in (e.g. -lmylib)
-LIBDIRS+=-L../avr_libs/sr595 
-LIBDIRS+=-L../avr_libs/serial
-LIBDIRS+=-L../avr_libs/strfmt
+LIBDIRS+=-L../../avr_libs/sr595 
+LIBDIRS+=-L../../avr_libs/serial
+LIBDIRS+=-L../../avr_libs/strfmt
 
 #libs
 LIBS+=$(AVR_DIR)/avr/lib/libm.a

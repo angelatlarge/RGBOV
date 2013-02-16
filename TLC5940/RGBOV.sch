@@ -1,4 +1,4 @@
-EESchema Schematic File Version 2  date 2/14/2013 12:11:03 PM
+EESchema Schematic File Version 2  date 2/15/2013 6:48:27 PM
 LIBS:kirill
 LIBS:power
 LIBS:device
@@ -40,7 +40,7 @@ $Descr User 11000 17000
 encoding utf-8
 Sheet 1 1
 Title ""
-Date "14 feb 2013"
+Date "15 feb 2013"
 Rev ""
 Comp ""
 Comment1 ""
@@ -48,6 +48,34 @@ Comment2 ""
 Comment3 ""
 Comment4 ""
 $EndDescr
+NoConn ~ 5900 7100
+NoConn ~ 5900 10050
+Text Notes 3750 7600 1    60   ~ 0
+green
+Text Notes 3650 4750 1    60   ~ 0
+white
+Text Notes 3650 8500 1    60   ~ 0
+white
+Wire Wire Line
+	3500 3400 3500 3950
+Connection ~ 3850 3750
+Wire Wire Line
+	3850 6450 4550 6450
+Connection ~ 3900 3650
+Wire Wire Line
+	3900 6350 4550 6350
+Connection ~ 3650 5000
+Wire Wire Line
+	3650 6150 4550 6150
+Connection ~ 3700 5300
+Wire Wire Line
+	3700 6050 4550 6050
+Wire Wire Line
+	4550 5950 3250 5950
+Wire Wire Line
+	3250 5950 3250 3950
+Wire Wire Line
+	3250 3950 2550 3950
 Wire Notes Line
 	4000 1900 4000 4150
 Wire Notes Line
@@ -69,44 +97,36 @@ Wire Wire Line
 Wire Wire Line
 	4200 5000 5250 5000
 Wire Wire Line
-	2550 3400 2950 3400
+	3500 3400 2550 3400
 Wire Wire Line
-	2950 3400 2950 3950
-Wire Wire Line
-	2950 3950 4550 3950
+	3500 3950 4550 3950
 Wire Wire Line
 	4550 3450 3650 3450
 Wire Wire Line
-	3650 3450 3650 5000
+	2550 5000 3650 5000
 Wire Wire Line
-	3650 5000 2550 5000
+	4550 3650 3900 3650
 Wire Wire Line
-	4550 3650 4100 3650
-Wire Wire Line
-	4100 3650 4100 3300
-Wire Wire Line
-	4100 3300 2550 3300
+	2550 3300 3900 3300
 Wire Wire Line
 	2900 6200 2900 4600
 Wire Wire Line
 	2900 4600 2550 4600
 Wire Wire Line
 	650  3000 650  3300
-Connection ~ 3900 7050
+Connection ~ 3100 7050
 Wire Wire Line
-	3400 7050 3900 7050
+	2600 7050 3100 7050
 Wire Wire Line
-	2550 4800 3900 4800
+	2550 4800 3100 4800
 Wire Wire Line
-	3900 4800 3900 8900
+	3100 4800 3100 11150
 Wire Wire Line
 	650  5300 650  5200
 Wire Wire Line
-	2550 3000 3250 3000
+	2550 3000 3850 3000
 Wire Wire Line
-	3250 3000 3250 3750
-Wire Wire Line
-	3250 3750 4550 3750
+	3850 3750 4550 3750
 Wire Wire Line
 	2550 4700 2800 4700
 Wire Wire Line
@@ -120,15 +140,11 @@ Wire Wire Line
 Wire Wire Line
 	2550 5300 3700 5300
 Wire Wire Line
-	3700 5300 3700 3350
+	4550 3350 3700 3350
 Wire Wire Line
-	3700 3350 4550 3350
+	2550 3500 3450 3500
 Wire Wire Line
-	2550 3500 2900 3500
-Wire Wire Line
-	2900 3500 2900 4350
-Wire Wire Line
-	2900 4350 4550 4350
+	4550 4350 3450 4350
 Wire Notes Line
 	6250 3150 6450 3150
 Wire Notes Line
@@ -147,6 +163,173 @@ Connection ~ 6300 3300
 Wire Wire Line
 	6300 2550 6300 4300
 Connection ~ 6300 2900
+Wire Wire Line
+	4200 6850 4200 7700
+Wire Wire Line
+	4200 7700 5250 7700
+Wire Wire Line
+	5250 10650 4200 10650
+Wire Wire Line
+	4200 10650 4200 9800
+Wire Wire Line
+	2550 4050 3200 4050
+Wire Wire Line
+	3200 4050 3200 8900
+Wire Wire Line
+	3200 8900 4550 8900
+Wire Wire Line
+	3700 3350 3700 9000
+Wire Wire Line
+	3700 9000 4550 9000
+Connection ~ 3700 6050
+Wire Wire Line
+	3650 3450 3650 9100
+Wire Wire Line
+	3650 9100 4550 9100
+Connection ~ 3650 6150
+Wire Wire Line
+	3900 3300 3900 9300
+Wire Wire Line
+	3900 9300 4550 9300
+Connection ~ 3900 6350
+Wire Wire Line
+	3850 3000 3850 9400
+Wire Wire Line
+	3850 9400 4550 9400
+Connection ~ 3850 6450
+Wire Wire Line
+	3450 4350 3450 3500
+Text Notes 2800 3850 0    60   ~ 0
+black
+Text Notes 2800 4050 0    60   ~ 0
+yellow
+Text Notes 2800 3950 0    60   ~ 0
+yellow
+$Comp
+L GND #PWR?
+U 1 1 511EC669
+P 4550 6700
+F 0 "#PWR?" H 4300 6850 60  0001 C CNN
+F 1 "GND" H 4450 6400 60  0001 C CNN
+	1    4550 6700
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR?
+U 1 1 511EC665
+P 4550 7100
+F 0 "#PWR?" H 4300 7250 60  0001 C CNN
+F 1 "GND" H 4450 6800 60  0001 C CNN
+	1    4550 7100
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR?
+U 1 1 511EC655
+P 4550 9650
+F 0 "#PWR?" H 4300 9800 60  0001 C CNN
+F 1 "GND" H 4450 9350 60  0001 C CNN
+	1    4550 9650
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR?
+U 1 1 511EC632
+P 4550 10050
+F 0 "#PWR?" H 4300 10200 60  0001 C CNN
+F 1 "GND" H 4450 9750 60  0001 C CNN
+	1    4550 10050
+	1    0    0    -1  
+$EndComp
+Text Notes 2800 3000 0    60   ~ 0
+white
+Text Notes 2800 3300 0    60   ~ 0
+red
+$Comp
+L GND #PWR?
+U 1 1 511EC2BD
+P 5250 8000
+F 0 "#PWR?" H 5000 8150 60  0001 C CNN
+F 1 "GND" H 5150 7700 60  0001 C CNN
+	1    5250 8000
+	1    0    0    -1  
+$EndComp
+$Comp
+L TLC5940 IC?
+U 1 1 511EC2BC
+P 5250 9400
+F 0 "IC?" H 4850 10550 60  0000 C CNN
+F 1 "TLC5940" H 5250 9450 60  0000 C CNN
+	1    5250 9400
+	1    0    0    -1  
+$EndComp
+$Comp
+L +5V #PWR?
+U 1 1 511EC2BB
+P 5250 8300
+F 0 "#PWR?" H 5250 8390 20  0001 C CNN
+F 1 "+5V" H 5250 8390 30  0000 C CNN
+	1    5250 8300
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR?
+U 1 1 511EC2BA
+P 5250 10700
+F 0 "#PWR?" H 5000 10850 60  0001 C CNN
+F 1 "GND" H 5150 10400 60  0001 C CNN
+	1    5250 10700
+	1    0    0    -1  
+$EndComp
+NoConn ~ 5900 10350
+NoConn ~ 5900 10250
+$Comp
+L R-US R?
+U 1 1 511EC2B9
+P 4400 9700
+F 0 "R?" H 4400 9700 60  0000 C CNN
+F 1 "2K2" H 4400 9500 60  0000 C CNN
+	1    4400 9700
+	1    0    0    -1  
+$EndComp
+$Comp
+L R-US R?
+U 1 1 511EC119
+P 4400 6750
+F 0 "R?" H 4400 6750 60  0000 C CNN
+F 1 "2K2" H 4400 6550 60  0000 C CNN
+	1    4400 6750
+	1    0    0    -1  
+$EndComp
+NoConn ~ 5900 7300
+NoConn ~ 5900 7400
+$Comp
+L GND #PWR?
+U 1 1 511EC10A
+P 5250 7750
+F 0 "#PWR?" H 5000 7900 60  0001 C CNN
+F 1 "GND" H 5150 7450 60  0001 C CNN
+	1    5250 7750
+	1    0    0    -1  
+$EndComp
+$Comp
+L +5V #PWR?
+U 1 1 511EC0FE
+P 5250 5350
+F 0 "#PWR?" H 5250 5440 20  0001 C CNN
+F 1 "+5V" H 5250 5440 30  0000 C CNN
+	1    5250 5350
+	1    0    0    -1  
+$EndComp
+$Comp
+L TLC5940 IC?
+U 1 1 511EC0F3
+P 5250 6450
+F 0 "IC?" H 4850 7600 60  0000 C CNN
+F 1 "TLC5940" H 5250 6500 60  0000 C CNN
+	1    5250 6450
+	1    0    0    -1  
+$EndComp
 Text Notes 3400 1300 0    60   ~ 0
 IREFpin  must be connected to GND\nthrough an IREF resistor\nThe max channel I of TLC5940 \n= V-IREF/R-IREF * 31.5. \nV-IREF is usually 1.24V, \nso R-IREF=2k2 yields \n17mA channel I
 NoConn ~ 5900 4400
@@ -320,7 +503,7 @@ F 1 "2K2" H 4400 3850 60  0000 C CNN
 	1    4400 4050
 	1    0    0    -1  
 $EndComp
-Text Notes 2850 4400 1    60   ~ 0
+Text Notes 2650 4400 1    60   ~ 0
 Parallel SIN
 Text Notes 2750 6350 0    60   ~ 0
 to BTH
@@ -372,48 +555,48 @@ $EndComp
 $Comp
 L +5V #PWR?
 U 1 1 510AA608
-P 2650 7050
-F 0 "#PWR?" H 2650 7140 20  0001 C CNN
-F 1 "+5V" H 2650 7140 30  0000 C CNN
-	1    2650 7050
+P 1850 7050
+F 0 "#PWR?" H 1850 7140 20  0001 C CNN
+F 1 "+5V" H 1850 7140 30  0000 C CNN
+	1    1850 7050
 	0    -1   -1   0   
 $EndComp
 $Comp
 L R-US R?
 U 1 1 510AA5F3
-P 2850 6950
-F 0 "R?" H 2850 6950 60  0000 C CNN
-F 1 "330" H 2850 6750 60  0000 C CNN
-	1    2850 6950
+P 2050 6950
+F 0 "R?" H 2050 6950 60  0000 C CNN
+F 1 "330" H 2050 6750 60  0000 C CNN
+	1    2050 6950
 	1    0    0    -1  
 $EndComp
 $Comp
 L LED D?
 U 1 1 510AA5E5
-P 3200 7050
-F 0 "D?" H 3200 7150 50  0000 C CNN
-F 1 "LED" H 3200 6950 50  0000 C CNN
-	1    3200 7050
+P 2400 7050
+F 0 "D?" H 2400 7150 50  0000 C CNN
+F 1 "LED" H 2400 6950 50  0000 C CNN
+	1    2400 7050
 	1    0    0    -1  
 $EndComp
-Text Notes 3950 8800 0    60   ~ 0
+Text Notes 3150 11050 0    60   ~ 0
 Hall effect switch
 $Comp
 L NPN Q?
 U 1 1 510AA5BD
-P 3900 9100
-F 0 "Q?" H 3730 9210 60  0000 C CNN
-F 1 "NPN" H 3900 9000 60  0000 L CNN
-	1    3900 9100
+P 3100 11350
+F 0 "Q?" H 2930 11460 60  0000 C CNN
+F 1 "NPN" H 3100 11250 60  0000 L CNN
+	1    3100 11350
 	1    0    0    -1  
 $EndComp
 $Comp
 L GND #PWR?
 U 1 1 5105A0C7
-P 3900 9350
-F 0 "#PWR?" H 3900 9350 30  0001 C CNN
-F 1 "GND" H 3900 9280 30  0001 C CNN
-	1    3900 9350
+P 3100 11600
+F 0 "#PWR?" H 3100 11600 30  0001 C CNN
+F 1 "GND" H 3100 11530 30  0001 C CNN
+	1    3100 11600
 	1    0    0    -1  
 $EndComp
 NoConn ~ 2550 3700
