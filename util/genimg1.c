@@ -32,7 +32,7 @@ struct palimage_t {
 };
 
 void printArrayData(unsigned char * data, int w, int h) {
-	printf("Print array data %d %d", w, h);
+	//~ printf("Print array data %d %d", w, h);
 	printf("{\n");
 	for (int y=0; y<h; y++) {
 		// Open brace if more than one row
@@ -69,7 +69,6 @@ unsigned long makePalIndex(unsigned char * pixel, unsigned int intcount) {
 			(unsigned short)
 			round(
 			((float)pixel[idxChannel]/255.0)
-			//~ *(float)intcount);
 			*(float)(intcount-1));
 		//~ printf("I:%d O:%d ", pixel[idxChannel], chan_int);
 		idx += chan_int * pow(intcount, idxChannel);	// R=low, G=mid, B=high
@@ -98,7 +97,7 @@ palimage_t * palletizePNGdata(unsigned char * pngData, unsigned int w, unsigned 
 			//~ unsigned char chan[3] = 
 			//~ {pngData[(y*w+x)*3+0], pngData[(y*w+x)*3+1], pngData[(y*w+x)*3+2]};
 			unsigned long idx = makePalIndex(pixel, intcount);
-			printf("Made color %#0.2x %#0.2x %#0.2x into palette index %#0.4x\n", pixel[0], pixel[1], pixel[2], idx);
+			//~ printf("Made color %#0.2x %#0.2x %#0.2x into palette index %#0.4x\n", pixel[0], pixel[1], pixel[2], idx);
 			if (idx>palSize-1) {
 				printf("Error: palette index too big\n");
 				return NULL;
@@ -129,7 +128,7 @@ palimage_t * palletizePNGdata(unsigned char * pngData, unsigned int w, unsigned 
 	unsigned short idxNextPalIndex = 0;
 	for (unsigned long idxPal = 0; idxPal<palSize; idxPal++) {
 		if (palette[idxPal]) {					// Palette entry is used (=non-zero)
-			printf("Making palette color out of index %d...", idxPal);
+			//~ printf("Making palette color out of index %d...", idxPal);
 			palette[idxPal] = idxNextPalIndex;	// Assign the next palette index
 			unsigned long ofs = idxNextPalIndex*3;
 			idxNextPalIndex++;
@@ -139,9 +138,9 @@ palimage_t * palletizePNGdata(unsigned char * pngData, unsigned int w, unsigned 
 				unsigned long digit = (long)pow(intcount, idxChan);
 				res->palette[ofs + idxChan] = val/digit;
 				val %= digit;
-				printf("%#0.2x ", res->palette[ofs + idxChan]);
+				//~ printf("%#0.2x ", res->palette[ofs + idxChan]);
 			}
-			printf("\n");
+			//~ printf("\n");
 		}
 	}
 	
@@ -159,8 +158,24 @@ palimage_t * palletizePNGdata(unsigned char * pngData, unsigned int w, unsigned 
 	return res;
 }
 
-
-
+void saveAsPNG(palimage_t * img, const char* filename, unsigned int intcount) {
+	printf("Saving to PNG");
+	// Create an output memory thing
+	unsigned char * imgdata = malloc( (img->w) * (img->h) * 3 );
+	unsigned char * t =imgdata;
+	for (int y=0; y<img->h; y++) {
+		for (int x=0; x<img->w; x++) {
+			unsigned short palIdx = img->pixdata[y*(img->w)+x];
+			for (int idxChan = 0; idxChan<3; idxChan++) {
+				t[idxChan] = round(img->palette[palIdx*3+idxChan]/(float)(intcount-1)*255);
+			}
+			t+=3;
+		}		
+	}	
+	//~ memset(imgdata, 0xff,  (img->w) * (img->h) * 3 );
+	lodepng_encode_file(filename, imgdata, img->w, img->h, LCT_RGB, 8);	
+	free(imgdata);
+}
 
 int main(int argc, char *argv[]) {
 	unsigned char * pngData;
@@ -180,6 +195,11 @@ int main(int argc, char *argv[]) {
 			return 2;
 		}
 	}
+	// Get output filename
+	char * strOutFile = NULL;
+	if (argc>3) { 
+		strOutFile = argv[3];
+	}
 	
 	lodepng_decode_file(&pngData, &w, &h, strFilename, LCT_RGB, 8);
 	
@@ -187,6 +207,10 @@ int main(int argc, char *argv[]) {
 	palimage_t * newdata = palletizePNGdata(pngData, w, h, (1<<nBitDepth));
 	int retval = 0;
 	if (newdata) {
+		
+		if (strOutFile) {
+			saveAsPNG(newdata, strOutFile, (1<<nBitDepth));
+		}
 		
 		// Have valid palette and data
 		//~ if (1) {
