@@ -596,6 +596,17 @@ int main() {
 				, idxIntensityTimeSlice
 #				endif /* INTENSITY_LEVELS>1 */
 				);
+			
+#			if INTENSITY_LEVELS == 1
+				idxHorizontalPixel++;
+#			else			
+				// Move to the next intensity
+				if (++idxIntensityTimeSlice >= INTENSITY_COUNTER_MAX) {
+					idxIntensityTimeSlice = 0;
+					idxHorizontalPixel++;
+				}
+#			endif /* PWM? */		
+			
 		}
 	}
 

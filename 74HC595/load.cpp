@@ -6,6 +6,8 @@
 #include "../shared/settings.h"
 #include <string.h>
 
+#define COLUMN_DATA_BYTES	(VERTICAL_PIXELS*3/8+( (VERTICAL_PIXELS*3%8) ? 1 : 0))
+
 #undef USE_SR_CLASS
 #undef USE_SR_SPI
 #define USE_SR_MANUALBB
@@ -76,15 +78,6 @@ void doDisplayUpdate(
 			}
 		}
 		
-#		if INTENSITY_LEVELS == 1
-			idxHorizontalPixel++;
-#		else			
-			// Move to the next intensity
-			if (++idxIntensityTimeSlice >= INTENSITY_COUNTER_MAX) {
-				idxIntensityTimeSlice = 0;
-				idxHorizontalPixel++;
-			}
-#		endif /* PWM? */		
 	} /*
 		else {
 			The column data is already zeros (see memset above), 
