@@ -55,18 +55,6 @@ uint8_t anChipOutputLine[CHIPS_COUNT] = {1<<2, 1<<1, 1<<0};
 
 void doDisplayUpdate(uint8_t idxHorizontalPixel) {
 
-	//~ if (idxHorizontalPixel < 100) {
-		//~ TLC5940_XLAT_PORT &= ~(1<<TLC5940_XLAT_BIT);		// XLAT -> low
-		//~ for (int i =0; i<12*15; i++) {
-			//~ TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
-			//~ nop();
-			//~ TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		// SCLK->high 
-			//~ nop();
-		//~ }
-		//~ TLC5940_XLAT_PORT |= 1<<TLC5940_XLAT_BIT;			// XLAT -> high
-		//~ return;
-	//~ }
-	
 	static uint8_t nColumnData[COLUMN_DATA_BYTES];
 	
 	if ( (idxHorizontalPixel<HORZ_PIXELS) && (idxHorizontalPixel<GRAPHIC_WIDTH)) {

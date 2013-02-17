@@ -40,11 +40,12 @@ void doDisplayUpdate(
 	static uint8_t nColumnData[COLUMN_DATA_BYTES];
 	
 	memset(nColumnData, 0, sizeof(nColumnData));
-	if (idxHorizontalPixel<HORZ_PIXELS) {
+	if ( (idxHorizontalPixel<HORZ_PIXELS) && (idxHorizontalPixel<GRAPHIC_WIDTH)) {
 		// Prepare a column to send
 		uint8_t idxOutBit = 0;
 		uint8_t idxOutByte = 0;
-		for (int idxRow=0; idxRow<VERTICAL_PIXELS; idxRow++) {
+		uint8_t h = (VERTICAL_PIXELS<GRAPHIC_HEIGHT) ? VERTICAL_PIXELS : GRAPHIC_HEIGHT;
+		for (int idxRow=0; idxRow<h; idxRow++) {
 			for (int idxColor = 4; idxColor>=0; idxColor-=2) {	/* start with red (which is binary 00110000) */
 #				ifdef PROGMEM_GRAPHIC
 					uint8_t nColorIntensity = ((0x03<<idxColor) & pgm_read_byte(&(graphic[idxRow][idxHorizontalPixel]))) >> idxColor;

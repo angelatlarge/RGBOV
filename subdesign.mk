@@ -131,6 +131,7 @@ VPATH += :../shared/
 	
 PRJSRC+=RGBOV.cpp
 PRJSRC+=load.cpp
+#~ PRJSRC+=../shared/graphic.c
 PRJSRC+=../../avr_libs/sr595/sr595.cpp
 PRJSRC+=../../avr_libs/serial/serial.c
 PRJSRC+=../../avr_libs/serial/strfmt.cpp
@@ -148,6 +149,10 @@ LIBDIRS+=-L../../avr_libs/strfmt
 
 #libs
 LIBS+=$(AVR_DIR)/avr/lib/libm.a
+
+# Additional explicit dependencies
+#~ $(OBJDIR)/RGBOV.o: 	../shared/glcdfont.c ../shared/graphic.c ../shared/settings.h ../shared/load.h
+#~ $(OBJDIR)/load.cpp:	../shared/glcdfont.c ../shared/graphic.c ../shared/settings.h ../shared/load.h
 
 # Optimization level, 
 # use s (size opt), 1, 2, 3 or 0 (off)
@@ -322,8 +327,6 @@ CFILES=$(filter %.c, $(PRJSRC))
 #  Assembly
 ASMFILES=$(filter %.S, $(PRJSRC))
 
-#	objects = 			$(patsubst %.cpp,obj/%.o,$(src)) 
-#	test_objects = 		$(patsubst %.cpp,obj/%.o,$(test_src)) 
 # List all object files we need to create
 OBJDEPS=										\
 	$(patsubst %.c,$(OBJDIR)/%.o,$(notdir $(CFILES))) 			\
@@ -331,12 +334,6 @@ OBJDEPS=										\
 	$(patsubst %.C,$(OBJDIR)/%.o,$(notdir $(BIGCFILES))) 		\
 	$(patsubst %.cc,$(OBJDIR)/%.o,$(notdir $(CCFILES))) 		\
 	$(patsubst %.S,$(OBJDIR)/%.o,$(notdir $(ASMFILES))) 
-#~ OBJDEPS=\
-	#~ $(CFILES:.c=.o)    \
-	#~ $(CPPFILES:.cpp=.o)\
-	#~ $(BIGCFILES:.C=.o) \
-	#~ $(CCFILES:.cc=.o)  \
-	#~ $(ASMFILES:.S=.o)
 
 # Define all lst files.
 LST=$(filter %.lst, $(OBJDEPS:.o=.lst))
@@ -401,7 +398,7 @@ $(DUMPTRG): $(TRG)
 	$(OBJDUMP) -S  $< > $@
 
 
-$(TRG): $(OBJDEPS) 
+$(TRG): $(OBJDEPS) $(HDEPS)
 	@echo ''
 	@echo @@@ Making $(TRG) from $(OBJDEPS) @@@
 	$(CC) $(LDFLAGS) -o $(TRG) $(OBJDEPS) -lm
@@ -509,15 +506,6 @@ clean:
 	$(REMOVE) $(GENASMFILES)
 	$(REMOVE) $(HEXTRG)
 	
-make_text_graphic: make_text_graphic.cpp drawtext.c
-	gcc -o make_text_graphic make_text_graphic.cpp drawtext.c -I.
-
-
-genImageArrayC: generateImageArray.c lodepng.c
-	gcc -o generateImageArray generateImageArray.c lodepng.c -I.
-
-genImageArrayCPP: generateImageArray.cpp lodepng.cpp
-	gcc -o generateImageArray generateImageArray.cpp lodepng.cpp -I.
 
 #####                    EOF                   #####
 
