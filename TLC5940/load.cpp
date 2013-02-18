@@ -71,23 +71,28 @@ void doDisplayUpdate(uint8_t idxHorizontalPixel) {
 			because there is an instruction to load PROGMEM data and increment the pointer
 		*/
 		uint8_t h = (VERTICAL_PIXELS<GRAPHIC_HEIGHT) ? VERTICAL_PIXELS : GRAPHIC_HEIGHT;
-		for (int idxRow=0; idxRow<h; idxRow++) {
+		unsigned char * dataIndex = nColumnData;
+		unsigned char * dataLimit = nColumnData + h*3;
+		uint8_t idxRow=0;
+		do {
+		
+		//~ for (int idxRow=0; idxRow<h; idxRow++) {
 #			ifdef PROGMEM_GRAPHIC
-				uint8_t nPaletteIndex = pgm_read_byte(&(graphic[idxRow][idxHorizontalPixel]));
+				uint8_t nPaletteIndex = pgm_read_byte(&(graphic[idxRow++][idxHorizontalPixel]));
 #			else /* PROGMEM_GRAPHIC */
-				uint8_t nPaletteIndex = graphic[idxRow][idxHorizontalPixel];
+				uint8_t nPaletteIndex = graphic[idxRow++][idxHorizontalPixel];
 #			endif /* PROGMEM_GRAPHIC */
 		
 #define OPTIMIZE_UNROLLCOLORPALETTELOOP			/* No significant improvement from this optimization */
 #ifdef OPTIMIZE_UNROLLCOLORPALETTELOOP
 #				ifdef PRECOMPUTE_PALETTE
-				nColumnData[idxRow*3+0] = palette[nPaletteIndex*3+0];
-				nColumnData[idxRow*3+1] = palette[nPaletteIndex*3+1];
-				nColumnData[idxRow*3+2] = palette[nPaletteIndex*3+2];
+				*(dataIndex++) = palette[nPaletteIndex*3+0];
+				*(dataIndex++) = palette[nPaletteIndex*3+1];
+				*(dataIndex++) = palette[nPaletteIndex*3+2];
 #				else /* PRECOMPUTE_PALETTE */
-				nColumnData[idxRow*3+0] = (1<<palette[nPaletteIndex*3+0]) - 1;
-				nColumnData[idxRow*3+1] = (1<<palette[nPaletteIndex*3+1]) - 1;
-				nColumnData[idxRow*3+2] = (1<<palette[nPaletteIndex*3+2]) - 1;
+				dataIndex++ = (1<<palette[nPaletteIndex*3+0]) - 1;
+				dataIndex++ = (1<<palette[nPaletteIndex*3+1]) - 1;
+				dataIndex++ = (1<<palette[nPaletteIndex*3+2]) - 1;
 #				endif /* PRECOMPUTE_PALETTE */
 #else			
 			// Copy the color stored in the palette into the column data
@@ -104,7 +109,7 @@ void doDisplayUpdate(uint8_t idxHorizontalPixel) {
 				
 			}
 #endif			
-		}
+		} while (dataIndex<dataLimit);
 		
 		/* 	The column data array now is a list of (exponentially corrected) intensities,
 			currently 8bits/channel (though in the future it might be 12 bits/channel)
@@ -147,7 +152,8 @@ void doDisplayUpdate(uint8_t idxHorizontalPixel) {
 				nBitMask >>= 1;
 			} while (nBitMask);
 #else						
-			uint8_t nBitMask = 0x80; 	// Faster than a bit index loop
+			uint8_t nBitMask = 0x80; 	// Using a bitmask that's shifted down every iteration 
+										// is faster than a bit index loop. 
 			do {
 				// Prepare a parallel set of bits to send
 				uint8_t nSinData=0;
