@@ -30,7 +30,16 @@ sr595 sr(
 
 #include "../shared/graphic.c"
 
-void doDisplayUpdate(
+void loadingPrepareUpdate(
+	uint8_t idxHorizontalPixel
+#	if INTENSITY_LEVELS>1			
+	, uint8_t idxIntensityTimeSlice
+#	endif /* INTENSITY_LEVELS>1 */
+	) {
+	return;
+}
+
+void loadingUpdateDisplay(
 	uint8_t idxHorizontalPixel
 #	if INTENSITY_LEVELS>1			
 	, uint8_t idxIntensityTimeSlice
@@ -121,7 +130,7 @@ void doDisplayUpdate(
 #endif	
 }
 
-void doDisplayInit() {
+void loadingInitDisplay() {
 	// Set up the SPI
 #ifdef USE_SR_SPI
 	SPCR = 0

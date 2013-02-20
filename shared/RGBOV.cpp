@@ -13,8 +13,6 @@
 
 # To do
 
-* Need to try smaller value resistors to make LEDs MOAR BRIGHT! MOAR SHINY!  ME LIKE SHINY!
-
 
 # Some design notes
 
@@ -112,7 +110,7 @@ right way of handling of adjusting mid-graphic/text.
 
 Kirill's RGB SMD LEDs are 5mmx5mm
 
-## Memory and "scanline decomposition"
+## Memory, "scanline decomposition", and optimal loading on SR595s
 
 Right now we calculate the vertical scanline that needs to be sent every time.  
 This takes time, but saves on image space. Currently a 200x10 image at 1 byte per pixel takes up 2K bytes of memory.
@@ -203,7 +201,7 @@ This means a minimum of 6 clocks for each bit, meaning 48 clocks minimum to load
 ### Instruction execution times
 
 So after looking at the datasheet a bit longer, the assumption of 1 clock/instruction seem unwarranted
-(I believed you Atmel!).  Let's try to annotate the last pseudocode with clock times
+(I believed you, Atmel!).  Let's try to annotate the last pseudocode with clock times
 
 	Loop:
 		OUT				# Lower SHCP, 1 clock
@@ -242,7 +240,7 @@ At three banks, we can output 24 bits at a time. At 24 parallel bits, we only ne
 4 bits of each SR to control 90 bits.  At 16 clocks/iteration * 4 iteration we have 
 64 clocks/load, and also we would need 24 shift registers :)
 
-## Double-sided setup, cost, and current
+## Double-sided setup, cost, and current on 74HC595s
 
 ATmega328 has 28 total pins. 5 of these are power/REF pins, 1 is the RESET pin. 
 2 are needed for bluetooth, and 1 for hall-effect sensor, leaving 19 GIO pins free.
@@ -375,6 +373,25 @@ and it costs $4 on Digikey.
 Bootloader is working. We may way to tweak the bootloader to load just the 
 PROGMEM data, and not the whole program, but this is not critical right now.
 
+## Loading times on TLC5940
+
+Currently, on the prototype with 15 pixels, 
+loading a vertical scanline on the TLC5940 takes 614 us, 
+which is too long: this is 55% of a pixel width @20mph, 
+and it is only 15 pixels.
+
+2013-February-17 07:51PM - updated the load loop to run in 410 us.  
+Still inadequate: 37% of a pixel width @20mph
+
+2013-February-17 08:30PM - unrolling an inner loop in the load routine
+makes the load run in 128/188 uS, or 11% of a pixel width @20mph
+
+2013-February-17 09:02PM - with full compiler speed optimizations
+the load runs in 89/134.4 uS or 8% of the pixel width. 
+More worrysome is the fact that the empty load takes 51.2uS, 
+or roughly 17 clocks / empty bit loaded.  
+This would seem to provide the ceiling on how fast the data could be loaded
+
 */
 
 /* 
@@ -406,9 +423,14 @@ volatile	uint32_t	nIntensityTimerHitCounter;
 
 volatile	uint8_t	idxHorizontalPixel;
 
-#define WHEEL_SPEED_TIMER_OCR			4
-#define WHEEL_SPEED_TIMER_PRESCALER		256
-#define WHEEL_SPEED_TIMER_PRESC_BITS	(1<<CS02)|(0<<CS01)|(0<<CS00)
+#define WHEEL_SPEED_TIMER_OCR			1
+#define WHEEL_SPEED_TIMER_PRESCALER		64
+#define WHEEL_SPEED_TIMER_PRESC_BITS	(0<<CS02)|(1<<CS01)|(1<<CS00)
+
+//~ #define WHEEL_SPEED_TIMER_OCR			4
+//~ #define WHEEL_SPEED_TIMER_PRESCALER		256
+//~ #define WHEEL_SPEED_TIMER_PRESC_BITS	(1<<CS02)|(0<<CS01)|(0<<CS00)
+
 #define WHEEL_SPEED_TIMER_FREQ_INT		(F_CPU/WHEEL_SPEED_TIMER_PRESCALER/WHEEL_SPEED_TIMER_OCR)
 #define WHEEL_SPEED_TIMER_FREQ_FLOAT	((float)F_CPU/(float)WHEEL_SPEED_TIMER_PRESCALER/(float)WHEEL_SPEED_TIMER_OCR)
 
@@ -555,9 +577,10 @@ int main() {
 		| (1<<WGM02) 				
 		| WHEEL_SPEED_TIMER_PRESC_BITS	
 		;
-	OCR0A = WHEEL_SPEED_TIMER_OCR;	// Timer 0 frequency = (8Mhz/256*4  = 7812.5Hz
-										/*	At 30mph and 26" wheel size, 
-											the interrupt will be triggered 1302 times/revolution
+	OCR0A = WHEEL_SPEED_TIMER_OCR;		/* Timer 0 frequency 	= (8Mhz/256/4)  = 7812.5Hz
+																= (20Mhz/256/4) = 19.5Khz
+											At 30mph and 26" wheel size, 
+											the interrupt will be triggered 1302 times/revolution (for 8mhz clock)
 										*/
 	TIMSK0 |= 1<<OCIE0A;					// Match A interrupt enable
 	
@@ -581,21 +604,41 @@ int main() {
 	sei();									// Enable interrupts
 	
 
-	doDisplayInit();
+	loadingInitDisplay();
 
 	//~ uint8_t anData[4] = {0x00, 0x00, 0x00, 0x00};
 	//~ sr.forceWriteData(0, 4, anData);	
 	nTicksPerRevolution = 0;
+	
+	uint8_t nDisplayPrepared = 0;
 
 	for (;;) {
 		if (nIntensityTimerHitCounter != 0) {
+			// Time to load some data into the LEDs!
+			
 			nIntensityTimerHitCounter = 0;
-			doDisplayUpdate(
+			uint16_t nStart = nHiResTimebaseCount;
+			if (!nDisplayPrepared) {
+				loadingPrepareUpdate(
+					idxHorizontalPixel
+	#				if INTENSITY_LEVELS>1			
+					, idxIntensityTimeSlice
+	#				endif /* INTENSITY_LEVELS>1 */
+					);
+				
+			}
+			loadingUpdateDisplay(
 				idxHorizontalPixel
 #				if INTENSITY_LEVELS>1			
 				, idxIntensityTimeSlice
 #				endif /* INTENSITY_LEVELS>1 */
 				);
+			nDisplayPrepared = 0;
+			
+			int16_t nCount = nHiResTimebaseCount - nStart;
+			//~ if ( nCount > 2) {
+				dputsi(" ", nCount, 0);
+			//~ }
 			
 #			if INTENSITY_LEVELS == 1
 				idxHorizontalPixel++;
@@ -607,7 +650,18 @@ int main() {
 				}
 #			endif /* PWM? */		
 			
-		}
+		} else {
+			// No intensity timer hit
+			if (!nDisplayPrepared) {
+				loadingPrepareUpdate(
+					idxHorizontalPixel
+	#				if INTENSITY_LEVELS>1			
+					, idxIntensityTimeSlice
+	#				endif /* INTENSITY_LEVELS>1 */
+					);
+				nDisplayPrepared = 1;
+			}
+		}			
 	}
 
 }

@@ -60,10 +60,12 @@
 
 uint8_t anChipOutputLine[CHIPS_COUNT] = {1<<2, 1<<1, 1<<0, 1<<3, 1<<4, 1<<5};
 
-void doDisplayUpdate(uint8_t idxHorizontalPixel) {
+static uint8_t nColumnData[COLUMN_DATA_BYTES];
 
-	static uint8_t nColumnData[COLUMN_DATA_BYTES];
+void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 	
+	TLC5940_XLAT_PORT &= ~(1<<TLC5940_XLAT_BIT);		// XLAT -> low
+
 	if ( (idxHorizontalPixel<HORZ_PIXELS) && (idxHorizontalPixel<GRAPHIC_WIDTH)) {
 		
 		// Prepare a column to send
@@ -117,8 +119,6 @@ void doDisplayUpdate(uint8_t idxHorizontalPixel) {
 			and the bottom of the graphic being last								*/
 		
 		// Now load the data into the TLC5940
-		
-		TLC5940_XLAT_PORT &= ~(1<<TLC5940_XLAT_BIT);		// XLAT -> low
 		
 		for (int idxChan = LINES_PER_CHIP-1; idxChan >= 0; idxChan--) {
 			
@@ -178,12 +178,10 @@ void doDisplayUpdate(uint8_t idxHorizontalPixel) {
 				
 		} // channel loop
 		
-		TLC5940_XLAT_PORT |= 1<<TLC5940_XLAT_BIT;			// XLAT -> high
-		
 	} else {
 		// Send black
 		TLC5940_SIN_PORT 	= 0;
-		
+
 #define OPTB		
 #ifdef OPTB		
 		uint8_t idxBit = LINES_PER_CHIP*12;
@@ -203,7 +201,11 @@ void doDisplayUpdate(uint8_t idxHorizontalPixel) {
 	}
 }
 
-void doDisplayInit() {
+void loadingUpdateDisplay(uint8_t idxHorizontalPixel) {
+	TLC5940_XLAT_PORT |= 1<<TLC5940_XLAT_BIT;			// XLAT -> high
+}
+
+void loadingInitDisplay() {
 	// Turn off the clock divisor
 	CLKPR = 1<<CLKPCE;
 	CLKPR = 0;
@@ -215,6 +217,10 @@ void doDisplayInit() {
 	TLC5940_SCLK_DDR |= 1<<TLC5940_SCLK_BIT;
 	TLC5940_DCPRG_DDR |= 1<<TLC5940_DCPRG_BIT;
 	TLC5940_VPRG_DDR |= 1<<TLC5940_VPRG_BIT;
+
+	// XLAT = low means data is ready to be activated, 
+	// so we want to set XLAT high
+	TLC5940_XLAT_PORT |= 1<<TLC5940_XLAT_BIT;			// XLAT -> high
 	
 	// Greyscale timer
 	//~ Setting the COM2x1:0 bits to two will produce a non-inverted PWM and an inverted PWM output
