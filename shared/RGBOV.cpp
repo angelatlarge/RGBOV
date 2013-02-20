@@ -617,7 +617,6 @@ int main() {
 			// Time to load some data into the LEDs!
 			
 			nIntensityTimerHitCounter = 0;
-			uint16_t nStart = nHiResTimebaseCount;
 			if (!nDisplayPrepared) {
 				loadingPrepareUpdate(
 					idxHorizontalPixel
@@ -635,10 +634,6 @@ int main() {
 				);
 			nDisplayPrepared = 0;
 			
-			int16_t nCount = nHiResTimebaseCount - nStart;
-			//~ if ( nCount > 2) {
-				dputsi(" ", nCount, 0);
-			//~ }
 			
 #			if INTENSITY_LEVELS == 1
 				idxHorizontalPixel++;
@@ -653,12 +648,17 @@ int main() {
 		} else {
 			// No intensity timer hit
 			if (!nDisplayPrepared) {
+				uint16_t nStart = nHiResTimebaseCount;
 				loadingPrepareUpdate(
 					idxHorizontalPixel
 	#				if INTENSITY_LEVELS>1			
 					, idxIntensityTimeSlice
 	#				endif /* INTENSITY_LEVELS>1 */
 					);
+				int16_t nCount = nHiResTimebaseCount - nStart;
+				//~ if ( nCount > 2) {
+					dputsi(" ", nCount, 0);
+				//~ }
 				nDisplayPrepared = 1;
 			}
 		}			
