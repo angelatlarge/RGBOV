@@ -34,40 +34,54 @@ struct palimage_t {
 	int h;
 };
 
-void printArrayData(unsigned char * data, int w, int h, char * name, int width_div) {
+void printArrayData(unsigned char * data, int w, int h, char * name, int width_div, unsigned short width_first) {
 	//~ printf("Print array data %d %d", w, h);
 	char strWidth[10];
 	sprintf(strWidth, "%d", w);
 	if (width_div>1) {
+		//~ if (width_first) {
+			//~ fprintf(stderr, "ERROR: cannot divide width with width_first option");
+			//~ return;
+		//~ }
 		if (w%width_div) {
 			fprintf(stderr, "ERROR: width_div specified to printArrayData, but width doesn't divide");
+			return;
 		} else {
 			sprintf(strWidth, "%d * %d", w/width_div, width_div);
 		}
 	}
+	printf("#define GRAPHIC_WIDTH %s\n", strWidth);
+	printf("#define GRAPHIC_HEIGHT %d\n", h);
 	if (h>1) {
-		printf("uint8_t %s[%d][%s] = {\n", name, h, strWidth);
+		if (width_first) {
+			printf("uint8_t %s[GRAPHIC_WIDTH][GRAPHIC_HEIGHT] = {\n", name);
+		} else {
+			printf("uint8_t %s[GRAPHIC_HEIGHT][GRAPHIC_WIDTH] = {\n", name, h);
+		}
 	} else {
-		printf("uint8_t %s[%s] = {\n", name, strWidth);
+		printf("uint8_t %s[GRAPHIC_WIDTH] = {\n", name);
 	}
-	for (int y=0; y<h; y++) {
-		// Open brace if more than one row
+	int imax = (width_first)?w:h;
+	for (int i=0; i<imax; i++) {		// First dimension
+		// Open brace if more than one set
 		if (h>1) { printf("{ "); }
 		
-		// Row data
-		for (int x=0; x<w; x++) {
-			unsigned char b = data[y*w+x];
+		// Other dimension
+		int jmax = (width_first)?h:w;
+		for (int j=0; j<jmax; j++) {
+			/* if (width_first) then i is horizontal otherwise i is vertical */
+			unsigned char b = (width_first) ? data[j*w+i] : data[i*w+j];
 			if (b==0) {
 				printf("0x00");
 			} else {
 				printf("%#0.2x", b);
 			}
-			if (x<w-1) 
+			if (j<jmax-1) 
 				printf(", ");
 		}
 		// Close brace if more than one row
-		if (h>1) {
-			if (y<h-1) {
+		if (imax>1) {
+			if (i<imax-1) {
 				printf("}, \n");
 			} else {
 				printf("}\n");
@@ -231,10 +245,18 @@ int main(int argc, char *argv[]) {
 			return 2;
 		}
 	}
-	// Get output filename
+	// Get remaining options
+	unsigned short fVertical = 1;
 	char * strOutFile = NULL;
-	if (argc>3) { 
-		strOutFile = argv[3];
+	for (int idxArg = 3; idxArg<argc; idxArg++) {
+		if (strcmp(argv[idxArg], "-v")) { 
+			fVertical = 1; 
+		} else if (strcmp(argv[idxArg], "-h")) { 
+			fVertical = 0; 
+		} else {
+			// output filename
+			strOutFile = argv[idxArg];
+		}
 	}
 	
 	lodepng_decode_file(&pngData, &w, &h, strFilename, LCT_RGB, 8);
@@ -255,7 +277,7 @@ int main(int argc, char *argv[]) {
 		
 		if (nBitDepth > 2) {
 			// Print the palette data
-			printArrayData(newdata->palette, newdata->palcount*3, 1, "palette", 3);
+			printArrayData(newdata->palette, newdata->palcount*3, 1, "palette", 3, 0);
 		} else {
 			// Collapse the palette and the pixel data: 
 			// in 2-bit color we are not using a palette, just storing the color data directly
@@ -272,7 +294,7 @@ int main(int argc, char *argv[]) {
 		}
 		
 		// Print the pixel and palette data
-		printArrayData(newdata->pixdata, w, h, "graphic", 1);
+		printArrayData(newdata->pixdata, w, h, "graphic", 1, fVertical);
 	} else {
 		// Palettization failed
 		retval = 1;
