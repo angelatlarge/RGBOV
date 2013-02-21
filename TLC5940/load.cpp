@@ -80,7 +80,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 
 	uint8_t idxUnit = 0;
 	
-	do {
+	do { // This is the unit loop
 	
 		uint8_t * curColData = nColumnData[idxUnit];
 		uint8_t * curOutLines = anChipOutputLine[idxUnit];
@@ -98,20 +98,18 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 			unsigned char * dataLimit = dataIndex + h*3;
 			
 			const uint8_t * ptrGraphic = &(graphic[idxHorizontalPixel][0]);
-			do {
+			do {	// This is the vertical pixel loop
 			
-			//~ for (int idxRow=0; idxRow<h; idxRow++) {
 #				ifdef PROGMEM_GRAPHIC
-					//~ uint8_t nPaletteIndex = pgm_read_byte(&(graphic[idxRow++][idxHorizontalPixel]));
 					uint8_t nPaletteIndex = pgm_read_byte(ptrGraphic);
 #				else /* PROGMEM_GRAPHIC */
 					uint8_t nPaletteIndex = *ptrGraphic;
-					//~ uint8_t nPaletteIndex = graphic[idxRow++][idxHorizontalPixel];
 #				endif /* PROGMEM_GRAPHIC */
 				ptrGraphic++;
-			
-#define OPTIMIZE_UNROLLCOLORPALETTELOOP			/* No significant improvement from this optimization */
-#ifdef OPTIMIZE_UNROLLCOLORPALETTELOOP
+
+				/*	Here we have an unrolled 0..2 loop: 
+					it doesn't provide any speed savings at optlevel 3
+					but it is not very ugly so we keep it			*/
 #				ifdef PRECOMPUTE_PALETTE
 					*(dataIndex++) = palette[nPaletteIndex*3+0];
 					*(dataIndex++) = palette[nPaletteIndex*3+1];
@@ -121,21 +119,6 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 					dataIndex++ = (1<<palette[nPaletteIndex*3+1]) - 1;
 					dataIndex++ = (1<<palette[nPaletteIndex*3+2]) - 1;
 #					endif /* PRECOMPUTE_PALETTE */
-#else /* OPTIMIZE_UNROLLCOLORPALETTELOOP */		
-				// Copy the color stored in the palette into the column data
-				for (int idxColor = 0; idxColor<3; idxColor++) {
-					// The palette color is 3 bytes, so we need to copy 3 bytes
-					// Secondly the palette color is stored as an intensity level, 
-					//    a number in range 0-4, or 0-8, or 0-12
-					// We need to convert that to 2^(intensity) - intensity is perceive exponentialy
-#				ifdef PRECOMPUTE_PALETTE
-					curColData[idxRow*3+idxColor] = palette[nPaletteIndex*3+idxColor];
-#				else /* PRECOMPUTE_PALETTE */
-					curColData[idxRow*3+idxColor] = (1<<palette[nPaletteIndex*3+idxColor]) - 1;
-#				endif /* PRECOMPUTE_PALETTE */
-					
-				}
-#endif /* OPTIMIZE_UNROLLCOLORPALETTELOOP */
 			} while (dataIndex<dataLimit);
 			
 			/* 	The column data array now is a list of (exponentially corrected) intensities,
@@ -156,31 +139,37 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 				}
 				
 				// Step 2: Send real data for the low 8 bits
-#undef OPTIMIZE_HIGHONCE			/* This turns a bit faster in the best case, and a great deal slowed in the worst case */
-#ifdef OPTIMIZE_HIGHONCE
-				uint8_t nSinData = 0;
-				uint8_t nBitMask = 0x80; 	// Faster than a bit index loop
-				do {
-					if (!(nSinData & curOutLines[0]) && (curColData[0*LINES_PER_CHIP+idxChan] & nBitMask)) nSinData |= curOutLines[0]; // else: nSinData is already zero
-					if (!(nSinData & curOutLines[1]) && (curColData[1*LINES_PER_CHIP+idxChan] & nBitMask)) nSinData |= curOutLines[1]; // else: nSinData is already zero
-					if (!(nSinData & curOutLines[2]) && (curColData[2*LINES_PER_CHIP+idxChan] & nBitMask)) nSinData |= curOutLines[2]; // else: nSinData is already zero
-#if CHIPS_PER_UNIT>3
-					if (!(nSinData & curOutLines[3]) && (curColData[3*LINES_PER_CHIP+idxChan] & nBitMask)) nSinData |= curOutLines[3]; // else: nSinData is already zero
-					if (!(nSinData & curOutLines[4]) && (curColData[4*LINES_PER_CHIP+idxChan] & nBitMask)) nSinData |= curOutLines[4]; // else: nSinData is already zero
-					if (!(nSinData & curOutLines[5]) && (curColData[5*LINES_PER_CHIP+idxChan] & nBitMask)) nSinData |= curOutLines[5]; // else: nSinData is already zero
-#endif /* CHIPS_PER_UNIT>3 */
-					TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
-					(*curOutPort)		 = nSinData;					// Data
-					TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		// SCLK->high 
+				/* 	This code assembles the bits from various parts of the graphic into a variable nSinData
+					to be written to the output port.  So what we have the the following:
 				
-					// Move to the next bitmask
-					nBitMask >>= 1;
-				} while (nBitMask);
-#else /* OPTIMIZE_HIGHONCE */
-#undef OPT_TWIDDLE
-#ifdef OPT_TWIDDLE
+						* a variable nSinData
+						* column data (sourceData), from which the bits need to be assembled into nSinData
+						* a bit index or a bit mask according to which the bits are assembled
+				
+					We could think of three ways of loading data into nSinData
+				
+						A. if (sourceData & bitMask) { // set the bits in nSinData; }
+						B. if (!(nSinData &bitMask) { // do step A }
+						C. pure bit twiddle way.
+
+					Way A is the first one I think of (KS).
+					Way B takes advantage of the fact that once a bit goes high in our data, it stays high, 
+					so we only need to look at sourceData is the corresponding bit in nSinData is low
+					Way C avoids any branching (see http://graphics.stanford.edu/~seander/bithacks.html#ConditionalSetOrClearBitsWithoutBranching)
+					
+					Conclusion: Way C is best if done right
+					Execution time of way A & Way B is data dependent: Way A is best on black pixels (no bits set) and 
+					Way B is best on white pixels (all bits are set).  Execution time of way C is independent of the data.
+					Way A is better than Way B: Way A on Way A's worst case is faster than Way B on Way B's worst case
+					Way C can be done a couple of ways.  To both set and clear bits, bit twiddling recommends
+						nSinData ^= (-flag ^ nSinData) & source
+					This turns out to be slower than way A. If you only need to SET the bits, but not clear them, then
+						nSinData |= (-flag) & source
+					is sufficient and executes about 4% faster than worst case Way A
+					
+					Therefore, we use the bit twiddling way
+				*/
 				uint8_t idxBit = 7;
-#endif /* OPT_TWIDDLE */
 				uint8_t nBitMask = 0x80; 	// Using a bitmask that's shifted down every iteration 
 											// is faster than a bit index loop. 
 				do {
@@ -188,26 +177,15 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 					uint8_t nSinData=0; /* 	Tested loading directly into port, and it was slower. 
 											Storing the data in the intermediate data structure is more speed-efficient */
 					// Unrolled chips loop
-#ifdef OPT_TWIDDLE
-					nSinData ^= (-((curColData[0*LINES_PER_CHIP+idxChan] & nBitMask)>>idxBit) ^ nSinData) & curOutLines[0];
-					nSinData ^= (-((curColData[1*LINES_PER_CHIP+idxChan] & nBitMask)>>idxBit) ^ nSinData) & curOutLines[1];
-					nSinData ^= (-((curColData[2*LINES_PER_CHIP+idxChan] & nBitMask)>>idxBit) ^ nSinData) & curOutLines[2];
+					nSinData |= ((-(curColData[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & curOutLines[0]);
+					nSinData |= ((-(curColData[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & curOutLines[1]);
+					nSinData |= ((-(curColData[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & curOutLines[2]);
 #if CHIPS_PER_UNIT>3
-					nSinData ^= (-((curColData[3*LINES_PER_CHIP+idxChan] & nBitMask)>>idxBit) ^ nSinData) & curOutLines[3];
-					nSinData ^= (-((curColData[4*LINES_PER_CHIP+idxChan] & nBitMask)>>idxBit) ^ nSinData) & curOutLines[4];
-					nSinData ^= (-((curColData[5*LINES_PER_CHIP+idxChan] & nBitMask)>>idxBit) ^ nSinData) & curOutLines[5];
-#endif /* chips per unit > 3 */
-					idxBit--;
-#else /* OPT_TWIDDLE */
-					if (curColData[0*LINES_PER_CHIP+idxChan] & (nBitMask)) nSinData |= curOutLines[0]; // else: nSinData is already zero
-					if (curColData[1*LINES_PER_CHIP+idxChan] & (nBitMask)) nSinData |= curOutLines[1]; // else: nSinData is already zero
-					if (curColData[2*LINES_PER_CHIP+idxChan] & (nBitMask)) nSinData |= curOutLines[2]; // else: nSinData is already zero
-#if CHIPS_PER_UNIT>3
-					if (curColData[3*LINES_PER_CHIP+idxChan] & (nBitMask)) nSinData |= curOutLines[3]; // else: nSinData is already zero
-					if (curColData[4*LINES_PER_CHIP+idxChan] & (nBitMask)) nSinData |= curOutLines[4]; // else: nSinData is already zero
-					if (curColData[5*LINES_PER_CHIP+idxChan] & (nBitMask)) nSinData |= curOutLines[5]; // else: nSinData is already zero
+					nSinData |= ((-(curColData[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & curOutLines[3]);
+					nSinData |= ((-(curColData[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & curOutLines[4]);
+					nSinData |= ((-(curColData[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & curOutLines[5]);
 #endif /* CHIPS_PER_UNIT>3 */
-#endif /* OPT_TWIDDLE */
+					idxBit--;
 					TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
 					(*curOutPort)		 = nSinData;					// Data
 					//~ PORTC = nSinData;
@@ -217,8 +195,6 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 					nBitMask >>= 1;
 				} while (nBitMask);
 
-#endif /* OPTIMIZE_HIGHONCE */
-					
 			} // channel loop
 		
 			// End of sending real data
