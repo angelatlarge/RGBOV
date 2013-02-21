@@ -40,6 +40,39 @@
 #define CHIPS_PER_UNIT		6
 #define LINES_PER_CHIP	(LEDS_PER_CHIP*3)
 
+#define SIN_UNIT0_CHIP0	1<<2
+#define SIN_UNIT0_CHIP1	1<<1
+#define SIN_UNIT0_CHIP2	1<<0
+#define SIN_UNIT0_CHIP3	1<<3
+#define SIN_UNIT0_CHIP4	1<<4
+#define SIN_UNIT0_CHIP5	1<<5
+
+#define SIN_UNIT1_CHIP0	1<<2
+#define SIN_UNIT1_CHIP1	1<<1
+#define SIN_UNIT1_CHIP2	1<<0
+#define SIN_UNIT1_CHIP3	1<<3
+#define SIN_UNIT1_CHIP4	1<<4
+#define SIN_UNIT1_CHIP5	1<<5
+
+#define SIN_UNIT2_CHIP0	1<<2
+#define SIN_UNIT2_CHIP1	1<<1
+#define SIN_UNIT2_CHIP2	1<<0
+#define SIN_UNIT2_CHIP3	1<<3
+#define SIN_UNIT2_CHIP4	1<<4
+#define SIN_UNIT2_CHIP5	1<<5
+
+#define SIN_UNIT3_CHIP0	1<<2
+#define SIN_UNIT3_CHIP1	1<<1
+#define SIN_UNIT3_CHIP2	1<<0
+#define SIN_UNIT3_CHIP3	1<<3
+#define SIN_UNIT3_CHIP4	1<<4
+#define SIN_UNIT3_CHIP5	1<<5
+
+#define DATAPORT_UNIT0	PORTC
+#define DATAPORT_UNIT1	PORTC
+#define DATAPORT_UNIT2	PORTC
+#define DATAPORT_UNIT3	PORTC
+
 uint8_t anChipOutputLine[SIDES_COUNT*SPOKES_COUNT][CHIPS_PER_UNIT] = {{1<<2, 1<<1, 1<<0, 1<<3, 1<<4, 1<<5}, {1<<2, 1<<1, 1<<0, 1<<3, 1<<4, 1<<5}, {1<<2, 1<<1, 1<<0, 1<<3, 1<<4, 1<<5}, {1<<2, 1<<1, 1<<0, 1<<3, 1<<4, 1<<5}};
 volatile uint8_t* anChipOutPort[SIDES_COUNT*SPOKES_COUNT] = { &PORTC, &PORTC, &PORTC, &PORTC };
 volatile uint8_t* anChipOutDDR[SIDES_COUNT*SPOKES_COUNT] = { &DDRC, &DDRC, &DDRC, &DDRC };
@@ -80,138 +113,214 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 
 	uint8_t idxUnit = 0;
 	
-	do { // This is the unit loop
-	
-		uint8_t * curColData = nColumnData[idxUnit];
-		uint8_t * curOutLines = anChipOutputLine[idxUnit];
-		volatile uint8_t * curOutPort = anChipOutPort[idxUnit];
+	if ( (idxHorizontalPixel<HORZ_PIXELS) && (idxHorizontalPixel<GRAPHIC_WIDTH)) {
 		
-		if ( (idxHorizontalPixel<HORZ_PIXELS) && (idxHorizontalPixel<GRAPHIC_WIDTH)) {
+		do { // This is the unit loop
+		
+			uint8_t * curColData = nColumnData[idxUnit];
+			//~ uint8_t * curOutLines = anChipOutputLine[idxUnit];
+			//~ volatile uint8_t * curOutPort = anChipOutPort[idxUnit];
 			
-			// Prepare a column to send
-			/* 	if this array was reoriented we could save some time because
-					a. there is an instruction to load PROGMEM data and increment the pointer
-					b. we wouldn't have to compute array indeces every time.
-			*/
-			uint8_t h = (VERTICAL_PIXELS<GRAPHIC_HEIGHT) ? VERTICAL_PIXELS : GRAPHIC_HEIGHT;
-			unsigned char * dataIndex = curColData;
-			unsigned char * dataLimit = dataIndex + h*3;
-			
-			const uint8_t * ptrGraphic = &(graphic[idxHorizontalPixel][0]);
-			do {	// This is the vertical pixel loop
-			
-#				ifdef PROGMEM_GRAPHIC
-					uint8_t nPaletteIndex = pgm_read_byte(ptrGraphic);
-#				else /* PROGMEM_GRAPHIC */
-					uint8_t nPaletteIndex = *ptrGraphic;
-#				endif /* PROGMEM_GRAPHIC */
-				ptrGraphic++;
-
-				/*	Here we have an unrolled 0..2 loop: 
-					it doesn't provide any speed savings at optlevel 3
-					but it is not very ugly so we keep it			*/
-#				ifdef PRECOMPUTE_PALETTE
-					*(dataIndex++) = palette[nPaletteIndex*3+0];
-					*(dataIndex++) = palette[nPaletteIndex*3+1];
-					*(dataIndex++) = palette[nPaletteIndex*3+2];
-#					else /* PRECOMPUTE_PALETTE */
-					dataIndex++ = (1<<palette[nPaletteIndex*3+0]) - 1;
-					dataIndex++ = (1<<palette[nPaletteIndex*3+1]) - 1;
-					dataIndex++ = (1<<palette[nPaletteIndex*3+2]) - 1;
-#					endif /* PRECOMPUTE_PALETTE */
-			} while (dataIndex<dataLimit);
-			
-			/* 	The column data array now is a list of (exponentially corrected) intensities,
-				currently 8bits/channel (though in the future it might be 12 bits/channel)
-				with the TOP of the graphic being first in the nColumnData array
-				and the bottom of the graphic being last								*/
-			
-			// Now load the data into the TLC5940
-			
-			for (int idxChan = LINES_PER_CHIP-1; idxChan >= 0; idxChan--) {
 				
-				// Step 1: Send zeros for high 4 bits (pad the high bits)
-				(*curOutPort) = 0;
-				for (uint8_t idxBit=0;idxBit<4;idxBit++) {
-					TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
-					TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		// SCLK->high 
-																	// Rising edge of the clock signal clocks in the data
-				}
-				
-				// Step 2: Send real data for the low 8 bits
-				/* 	This code assembles the bits from various parts of the graphic into a variable nSinData
-					to be written to the output port.  So what we have the the following:
-				
-						* a variable nSinData
-						* column data (sourceData), from which the bits need to be assembled into nSinData
-						* a bit index or a bit mask according to which the bits are assembled
-				
-					We could think of three ways of loading data into nSinData
-				
-						A. if (sourceData & bitMask) { // set the bits in nSinData; }
-						B. if (!(nSinData &bitMask) { // do step A }
-						C. pure bit twiddle way.
-
-					Way A is the first one I think of (KS).
-					Way B takes advantage of the fact that once a bit goes high in our data, it stays high, 
-					so we only need to look at sourceData is the corresponding bit in nSinData is low
-					Way C avoids any branching (see http://graphics.stanford.edu/~seander/bithacks.html#ConditionalSetOrClearBitsWithoutBranching)
-					
-					Conclusion: Way C is best if done right
-					Execution time of way A & Way B is data dependent: Way A is best on black pixels (no bits set) and 
-					Way B is best on white pixels (all bits are set).  Execution time of way C is independent of the data.
-					Way A is better than Way B: Way A on Way A's worst case is faster than Way B on Way B's worst case
-					Way C can be done a couple of ways.  To both set and clear bits, bit twiddling recommends
-						nSinData ^= (-flag ^ nSinData) & source
-					This turns out to be slower than way A. If you only need to SET the bits, but not clear them, then
-						nSinData |= (-flag) & source
-					is sufficient and executes about 4% faster than worst case Way A
-					
-					Therefore, we use the bit twiddling way
+				// Prepare a column to send
+				/* 	if this array was reoriented we could save some time because
+						a. there is an instruction to load PROGMEM data and increment the pointer
+						b. we wouldn't have to compute array indeces every time.
 				*/
-				uint8_t idxBit = 7;
-				uint8_t nBitMask = 0x80; 	// Using a bitmask that's shifted down every iteration 
-											// is faster than a bit index loop. 
-				do {
-					// Prepare a parallel set of bits to send
-					uint8_t nSinData=0; /* 	Tested loading directly into port, and it was slower. 
-											Storing the data in the intermediate data structure is more speed-efficient */
-					// Unrolled chips loop
-					nSinData |= ((-(curColData[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & curOutLines[0]);
-					nSinData |= ((-(curColData[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & curOutLines[1]);
-					nSinData |= ((-(curColData[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & curOutLines[2]);
-#if CHIPS_PER_UNIT>3
-					nSinData |= ((-(curColData[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & curOutLines[3]);
-					nSinData |= ((-(curColData[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & curOutLines[4]);
-					nSinData |= ((-(curColData[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & curOutLines[5]);
-#endif /* CHIPS_PER_UNIT>3 */
-					idxBit--;
-					TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
-					(*curOutPort)		 = nSinData;					// Data
-					//~ PORTC = nSinData;
-					TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		// SCLK->high 
-					
-					// Move to the next bitmask
-					nBitMask >>= 1;
-				} while (nBitMask);
+				uint8_t h = (VERTICAL_PIXELS<GRAPHIC_HEIGHT) ? VERTICAL_PIXELS : GRAPHIC_HEIGHT;
+				unsigned char * dataIndex = curColData;
+				unsigned char * dataLimit = dataIndex + h*3;
+				
+				const uint8_t * ptrGraphic = &(graphic[idxHorizontalPixel][0]);
+				do {	// This is the vertical pixel loop
+				
+	#				ifdef PROGMEM_GRAPHIC
+						uint8_t nPaletteIndex = pgm_read_byte(ptrGraphic);
+	#				else /* PROGMEM_GRAPHIC */
+						uint8_t nPaletteIndex = *ptrGraphic;
+	#				endif /* PROGMEM_GRAPHIC */
+					ptrGraphic++;
 
-			} // channel loop
-		
-			// End of sending real data
-		
-		} else {
+					/*	Here we have an unrolled 0..2 loop: 
+						it doesn't provide any speed savings at optlevel 3
+						but it is not very ugly so we keep it			*/
+	#				ifdef PRECOMPUTE_PALETTE
+						*(dataIndex++) = palette[nPaletteIndex*3+0];
+						*(dataIndex++) = palette[nPaletteIndex*3+1];
+						*(dataIndex++) = palette[nPaletteIndex*3+2];
+	#					else /* PRECOMPUTE_PALETTE */
+						dataIndex++ = (1<<palette[nPaletteIndex*3+0]) - 1;
+						dataIndex++ = (1<<palette[nPaletteIndex*3+1]) - 1;
+						dataIndex++ = (1<<palette[nPaletteIndex*3+2]) - 1;
+	#					endif /* PRECOMPUTE_PALETTE */
+				} while (dataIndex<dataLimit);	// End of the vertical pixel loop
+				
+		} while (++idxUnit < SIDES_COUNT*SPOKES_COUNT);	/* 	End of the unit loop,
+															because we unroll it for the loading */
 			
-			// Send black padding
+				
+		/* 	Now the column data array is a list of (exponentially corrected) intensities,
+			currently 8bits/channel (though in the future it might be 12 bits/channel)
+			with the TOP of the graphic being first in the nColumnData array
+			and the bottom of the graphic being last								*/
+		
+		// Now load the data into the TLC5940
+		
+		for (int idxChan = LINES_PER_CHIP-1; idxChan >= 0; idxChan--) {
 			
-			(*curOutPort) = 0;
+			// Step 1: Send zeros for high 4 bits (pad the high bits)
+				
+			// Unrolled unit loop
+			DATAPORT_UNIT0 = 0;
+			DATAPORT_UNIT1 = 0;
+			DATAPORT_UNIT2 = 0;
+			DATAPORT_UNIT3 = 0;
+			//~ (*curOutPort) = 0;
+			// Unrolled bit loop
+			// Bit 0
+			TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
+			TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		// SCLK->high: Rising edge of the clock signal clocks in the data
+			// Bit 1
+			TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
+			TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		// SCLK->high: Rising edge of the clock signal clocks in the data
+			// Bit 2
+			TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
+			TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		// SCLK->high: Rising edge of the clock signal clocks in the data
+			// Bit 3
+			TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
+			TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		// SCLK->high: Rising edge of the clock signal clocks in the data
+			//~ for (uint8_t idxBit=0;idxBit<4;idxBit++) {
+				//~ TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
+				//~ TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		// SCLK->high: Rising edge of the clock signal clocks in the data
+			//~ }
+			
+			// Step 2: Send real data for the low 8 bits
+			/* 	This code assembles the bits from various parts of the graphic into a variable nSinData
+				to be written to the output port.  So what we have the the following:
+			
+					* a variable nSinData
+					* column data (sourceData), from which the bits need to be assembled into nSinData
+					* a bit index or a bit mask according to which the bits are assembled
+			
+				We could think of three ways of loading data into nSinData
+			
+					A. if (sourceData & bitMask) { // set the bits in nSinData; }
+					B. if (!(nSinData &bitMask) { // do step A }
+					C. pure bit twiddle way.
 
-			for (uint8_t idxBit=0;idxBit<LINES_PER_CHIP*12;idxBit++) {  // Using "for" or a "while" loop is the same here
+				Way A is the first one I think of (KS).
+				Way B takes advantage of the fact that once a bit goes high in our data, it stays high, 
+				so we only need to look at sourceData is the corresponding bit in nSinData is low
+				Way C avoids any branching (see http://graphics.stanford.edu/~seander/bithacks.html#ConditionalSetOrClearBitsWithoutBranching)
+				
+				Conclusion: Way C is best if done right
+				Execution time of way A & Way B is data dependent: Way A is best on black pixels (no bits set) and 
+				Way B is best on white pixels (all bits are set).  Execution time of way C is independent of the data.
+				Way A is better than Way B: Way A on Way A's worst case is faster than Way B on Way B's worst case
+				Way C can be done a couple of ways.  To both set and clear bits, bit twiddling recommends
+					nSinData ^= (-flag ^ nSinData) & source
+				This turns out to be slower than way A. If you only need to SET the bits, but not clear them, then
+					nSinData |= (-flag) & source
+				is sufficient and executes about 4% faster than worst case Way A
+				
+				Therefore, we use the bit twiddling way
+			*/
+			uint8_t idxBit = 7;
+			uint8_t nBitMask = 0x80; 	// Using a bitmask that's shifted down every iteration 
+										// is faster than a bit index loop. 
+			do {
+				// Prepare a parallel set of bits to send
+
 				TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
+				
+				// Unrolled unit loop
+				
+				/* ---UNIT 0 --- */
+				uint8_t nSinData=0; /* 	Tested loading directly into port, and it was slower. 
+										Storing the data in the intermediate data structure is more speed-efficient */
+#define			COLUMNDATA_UNIT0	nColumnData[0]
+				// Unrolled chips loop
+				nSinData |= ((-(COLUMNDATA_UNIT0[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT0_CHIP0);
+				nSinData |= ((-(COLUMNDATA_UNIT0[1*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT0_CHIP1);
+				nSinData |= ((-(COLUMNDATA_UNIT0[2*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT0_CHIP2);
+#if CHIPS_PER_UNIT>3
+				nSinData |= ((-(COLUMNDATA_UNIT0[3*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT0_CHIP3);
+				nSinData |= ((-(COLUMNDATA_UNIT0[4*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT0_CHIP4);
+				nSinData |= ((-(COLUMNDATA_UNIT0[5*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT0_CHIP5);
+#endif /* CHIPS_PER_UNIT>3 */
+				DATAPORT_UNIT0		 = nSinData;					// Data
+				
+				/* ---UNIT 1 --- */
+				nSinData=0; 
+#define			COLUMNDATA_UNIT1	nColumnData[1]
+				nSinData |= ((-(COLUMNDATA_UNIT1[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT1_CHIP0);
+				nSinData |= ((-(COLUMNDATA_UNIT1[1*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT1_CHIP1);
+				nSinData |= ((-(COLUMNDATA_UNIT1[2*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT1_CHIP2);
+#if CHIPS_PER_UNIT>3
+				nSinData |= ((-(COLUMNDATA_UNIT1[3*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT1_CHIP3);
+				nSinData |= ((-(COLUMNDATA_UNIT1[4*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT1_CHIP4);
+				nSinData |= ((-(COLUMNDATA_UNIT1[5*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT1_CHIP5);
+				DATAPORT_UNIT1		 = nSinData;					// Data
+				
+				/* ---UNIT 2 --- */
+				nSinData=0; 
+#define			COLUMNDATA_UNIT2	nColumnData[2]
+#endif /* CHIPS_PER_UNIT>3 */
+				nSinData |= ((-(COLUMNDATA_UNIT2[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT2_CHIP0);
+				nSinData |= ((-(COLUMNDATA_UNIT2[1*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT2_CHIP1);
+				nSinData |= ((-(COLUMNDATA_UNIT2[2*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT2_CHIP2);
+#if CHIPS_PER_UNIT>3
+				nSinData |= ((-(COLUMNDATA_UNIT2[3*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT2_CHIP3);
+				nSinData |= ((-(COLUMNDATA_UNIT2[4*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT2_CHIP4);
+				nSinData |= ((-(COLUMNDATA_UNIT2[5*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT2_CHIP5);
+#endif /* CHIPS_PER_UNIT>3 */
+				DATAPORT_UNIT2		 = nSinData;					// Data
+				
+				/* ---UNIT 3 --- */
+				nSinData=0; 
+#define			COLUMNDATA_UNIT3	nColumnData[3]
+				nSinData |= ((-(COLUMNDATA_UNIT3[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT3_CHIP0);
+				nSinData |= ((-(COLUMNDATA_UNIT3[1*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT3_CHIP1);
+				nSinData |= ((-(COLUMNDATA_UNIT3[2*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT3_CHIP2);
+#if CHIPS_PER_UNIT>3
+				nSinData |= ((-(COLUMNDATA_UNIT3[3*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT3_CHIP3);
+				nSinData |= ((-(COLUMNDATA_UNIT3[4*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT3_CHIP4);
+				nSinData |= ((-(COLUMNDATA_UNIT3[5*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT3_CHIP5);
+#endif /* CHIPS_PER_UNIT>3 */
+				DATAPORT_UNIT3		 = nSinData;					// Data
+				
+				idxBit--;
+				//~ PORTC = nSinData;
 				TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		// SCLK->high 
-																// Rising edge of the clock signal clocks in the data
-			}
+				
+				// Move to the next bitmask
+				nBitMask >>= 1;
+			} while (nBitMask);
+
+		} // channel loop
+	
+		// End of sending real data
+		
+		
+		
+	} else {
+		// We need only send padding now
+		
+		
+		// Send black padding
+		
+		//~ (*curOutPort) = 0;
+		DATAPORT_UNIT0 = 0;
+		DATAPORT_UNIT1 = 0;
+		DATAPORT_UNIT2 = 0;
+		DATAPORT_UNIT3 = 0;
+
+		for (uint8_t idxBit=0;idxBit<LINES_PER_CHIP*12;idxBit++) {  // Using "for" or a "while" loop is the same here
+			TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
+			TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		// SCLK->high 
+															// Rising edge of the clock signal clocks in the data
 		}
-	} while (++idxUnit < SIDES_COUNT*SPOKES_COUNT);
+	}
 }
 
 void loadingUpdateDisplay(uint8_t idxHorizontalPixel) {
