@@ -9,3 +9,14 @@ generateImageArray.exe
 b.c.snippet
 *.o
 *.exe
+pacman.psd
+mario.psd
+*.exe
+*.gz
+*.a
+*.la
+*.zip
+*.stackdump
+*-cache.lib
+*.bak
+exported

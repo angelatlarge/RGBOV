@@ -121,7 +121,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 					dataIndex++ = (1<<palette[nPaletteIndex*3+1]) - 1;
 					dataIndex++ = (1<<palette[nPaletteIndex*3+2]) - 1;
 #					endif /* PRECOMPUTE_PALETTE */
-#else			
+#else /* OPTIMIZE_UNROLLCOLORPALETTELOOP */		
 				// Copy the color stored in the palette into the column data
 				for (int idxColor = 0; idxColor<3; idxColor++) {
 					// The palette color is 3 bytes, so we need to copy 3 bytes
@@ -135,7 +135,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 #				endif /* PRECOMPUTE_PALETTE */
 					
 				}
-#endif			
+#endif /* OPTIMIZE_UNROLLCOLORPALETTELOOP */
 			} while (dataIndex<dataLimit);
 			
 			/* 	The column data array now is a list of (exponentially corrected) intensities,
@@ -168,7 +168,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 					if (!(nSinData & curOutLines[3]) && (curColData[3*LINES_PER_CHIP+idxChan] & nBitMask)) nSinData |= curOutLines[3]; // else: nSinData is already zero
 					if (!(nSinData & curOutLines[4]) && (curColData[4*LINES_PER_CHIP+idxChan] & nBitMask)) nSinData |= curOutLines[4]; // else: nSinData is already zero
 					if (!(nSinData & curOutLines[5]) && (curColData[5*LINES_PER_CHIP+idxChan] & nBitMask)) nSinData |= curOutLines[5]; // else: nSinData is already zero
-#endif			
+#endif /* CHIPS_PER_UNIT>3 */
 					TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
 					(*curOutPort)		 = nSinData;					// Data
 					TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		// SCLK->high 
@@ -176,7 +176,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 					// Move to the next bitmask
 					nBitMask >>= 1;
 				} while (nBitMask);
-#else 
+#else /* OPTIMIZE_HIGHONCE */
 #undef OPT_TWIDDLE
 #ifdef OPT_TWIDDLE
 				uint8_t idxBit = 7;
@@ -206,7 +206,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 					if (curColData[3*LINES_PER_CHIP+idxChan] & (nBitMask)) nSinData |= curOutLines[3]; // else: nSinData is already zero
 					if (curColData[4*LINES_PER_CHIP+idxChan] & (nBitMask)) nSinData |= curOutLines[4]; // else: nSinData is already zero
 					if (curColData[5*LINES_PER_CHIP+idxChan] & (nBitMask)) nSinData |= curOutLines[5]; // else: nSinData is already zero
-#endif /* chips per unit > 3 */
+#endif /* CHIPS_PER_UNIT>3 */
 #endif /* OPT_TWIDDLE */
 					TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
 					(*curOutPort)		 = nSinData;					// Data
@@ -217,12 +217,16 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 					nBitMask >>= 1;
 				} while (nBitMask);
 
-	#endif			
+#endif /* OPTIMIZE_HIGHONCE */
 					
 			} // channel loop
-			
+		
+			// End of sending real data
+		
 		} else {
-			// Send black
+			
+			// Send black padding
+			
 			(*curOutPort) = 0;
 
 			for (uint8_t idxBit=0;idxBit<LINES_PER_CHIP*12;idxBit++) {  // Using "for" or a "while" loop is the same here
