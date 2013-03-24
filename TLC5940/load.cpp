@@ -40,67 +40,33 @@
 #define CHIPS_PER_UNIT		6
 #define LINES_PER_CHIP	(LEDS_PER_CHIP*3)
 
-#define SIN_UNIT0_CHIP0_MASK	1<<2
-#define SIN_UNIT0_CHIP1_MASK	1<<1
-#define SIN_UNIT0_CHIP2_MASK	1<<0
-#define SIN_UNIT0_CHIP3_MASK	1<<3
-#define SIN_UNIT0_CHIP4_MASK	1<<4
-#define SIN_UNIT0_CHIP5_MASK	1<<5
+#define SIN_UNIT0_CHIP0	1<<2
+#define SIN_UNIT0_CHIP1	1<<1
+#define SIN_UNIT0_CHIP2	1<<0
+#define SIN_UNIT0_CHIP3	1<<3
+#define SIN_UNIT0_CHIP4	1<<4
+#define SIN_UNIT0_CHIP5	1<<5
 
-#define SIN_UNIT1_CHIP0_MASK	1<<2
-#define SIN_UNIT1_CHIP1_MASK	1<<1
-#define SIN_UNIT1_CHIP2_MASK	1<<0
-#define SIN_UNIT1_CHIP3_MASK	1<<3
-#define SIN_UNIT1_CHIP4_MASK	1<<4
-#define SIN_UNIT1_CHIP5_MASK	1<<5
+#define SIN_UNIT1_CHIP0	1<<2
+#define SIN_UNIT1_CHIP1	1<<1
+#define SIN_UNIT1_CHIP2	1<<0
+#define SIN_UNIT1_CHIP3	1<<3
+#define SIN_UNIT1_CHIP4	1<<4
+#define SIN_UNIT1_CHIP5	1<<5
 
-#define SIN_UNIT2_CHIP0_MASK	1<<2
-#define SIN_UNIT2_CHIP1_MASK	1<<1
-#define SIN_UNIT2_CHIP2_MASK	1<<0
-#define SIN_UNIT2_CHIP3_MASK	1<<3
-#define SIN_UNIT2_CHIP4_MASK	1<<4
-#define SIN_UNIT2_CHIP5_MASK	1<<5
+#define SIN_UNIT2_CHIP0	1<<2
+#define SIN_UNIT2_CHIP1	1<<1
+#define SIN_UNIT2_CHIP2	1<<0
+#define SIN_UNIT2_CHIP3	1<<3
+#define SIN_UNIT2_CHIP4	1<<4
+#define SIN_UNIT2_CHIP5	1<<5
 
-#define SIN_UNIT3_CHIP0_MASK	1<<2
-#define SIN_UNIT3_CHIP1_MASK	1<<1
-#define SIN_UNIT3_CHIP2_MASK	1<<0
-#define SIN_UNIT3_CHIP3_MASK	1<<3
-#define SIN_UNIT3_CHIP4_MASK	1<<4
-#define SIN_UNIT3_CHIP5_MASK	1<<5
-
-
-
-
-#define SIN_UNIT0_CHIP0_IDX	2
-#define SIN_UNIT0_CHIP1_IDX	1
-#define SIN_UNIT0_CHIP2_IDX	0
-#define SIN_UNIT0_CHIP3_IDX	3
-#define SIN_UNIT0_CHIP4_IDX	4
-#define SIN_UNIT0_CHIP5_IDX	5
-
-#define SIN_UNIT1_CHIP0_IDX	2
-#define SIN_UNIT1_CHIP1_IDX	1
-#define SIN_UNIT1_CHIP2_IDX	0
-#define SIN_UNIT1_CHIP3_IDX	3
-#define SIN_UNIT1_CHIP4_IDX	4
-#define SIN_UNIT1_CHIP5_IDX	5
-
-#define SIN_UNIT2_CHIP0_IDX	2
-#define SIN_UNIT2_CHIP1_IDX	1
-#define SIN_UNIT2_CHIP2_IDX	0
-#define SIN_UNIT2_CHIP3_IDX	3
-#define SIN_UNIT2_CHIP4_IDX	4
-#define SIN_UNIT2_CHIP5_IDX	5
-
-#define SIN_UNIT3_CHIP0_IDX	2
-#define SIN_UNIT3_CHIP1_IDX	1
-#define SIN_UNIT3_CHIP2_IDX	0
-#define SIN_UNIT3_CHIP3_IDX	3
-#define SIN_UNIT3_CHIP4_IDX	4
-#define SIN_UNIT3_CHIP5_IDX	5
-
-
-
+#define SIN_UNIT3_CHIP0	1<<2
+#define SIN_UNIT3_CHIP1	1<<1
+#define SIN_UNIT3_CHIP2	1<<0
+#define SIN_UNIT3_CHIP3	1<<3
+#define SIN_UNIT3_CHIP4	1<<4
+#define SIN_UNIT3_CHIP5	1<<5
 
 #define DATAPORT_UNIT0	PORTC
 #define DATAPORT_UNIT1	PORTC
@@ -140,6 +106,7 @@ volatile uint8_t* anChipOutDDR[SIDES_COUNT*SPOKES_COUNT] = { &DDRC, &DDRC, &DDRC
 	
 static uint8_t nColumnData[SIDES_COUNT*SPOKES_COUNT][COLUMN_DATA_BYTES];
 
+
 void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 	
 	TLC5940_XLAT_PORT &= ~(1<<TLC5940_XLAT_BIT);		// XLAT -> low
@@ -165,12 +132,10 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 				unsigned char * dataLimit = dataIndex + h*3;
 				
 				const uint8_t * ptrGraphic = &(graphic[idxHorizontalPixel][0]);
-			
 				do {	// This is the vertical pixel loop
 				
-					
 	#				ifdef PROGMEM_GRAPHIC
-						uint8_t nPaletteIndex = pgm_read_byte(ptrGraphic);		// TODO: try commenting this out
+						uint8_t nPaletteIndex = pgm_read_byte(ptrGraphic);
 	#				else /* PROGMEM_GRAPHIC */
 						uint8_t nPaletteIndex = *ptrGraphic;
 	#				endif /* PROGMEM_GRAPHIC */
@@ -180,7 +145,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 						it doesn't provide any speed savings at optlevel 3
 						but it is not very ugly so we keep it			*/
 	#				ifdef PRECOMPUTE_PALETTE
-						*(dataIndex++) = palette[nPaletteIndex*3+0]; // TODO: make sure nPaletteIndex*3 is computed onle once
+						*(dataIndex++) = palette[nPaletteIndex*3+0];
 						*(dataIndex++) = palette[nPaletteIndex*3+1];
 						*(dataIndex++) = palette[nPaletteIndex*3+2];
 	#					else /* PRECOMPUTE_PALETTE */
@@ -260,67 +225,77 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 				
 				Therefore, we use the bit twiddling way
 			*/
+			uint8_t idxBit = 7;
+			uint8_t nBitMask = 0x80; 	// Using a bitmask that's shifted down every iteration 
+										// is faster than a bit index loop. 
+			do {
+				// Prepare a parallel set of bits to send
+
+				TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
 				
 				// Unrolled unit loop
 				
 				/* ---UNIT 0 --- */
-				uint8_t nSinData; /* 	Tested loading directly into port, and it was slower. 
+				uint8_t nSinData=0; /* 	Tested loading directly into port, and it was slower. 
 										Storing the data in the intermediate data structure is more speed-efficient */
 #define			COLUMNDATA_UNIT0	nColumnData[0]
-#define			COLUMNDATA_UNIT1	nColumnData[1]
-#define			COLUMNDATA_UNIT2	nColumnData[2]
-#define			COLUMNDATA_UNIT3	nColumnData[3]
-#define			COLUMNDATA_UNIT4	nColumnData[4]
-#define			COLUMNDATA_UNIT5	nColumnData[5]
 				// Unrolled chips loop
-				// TODO: Try to precomute the the columndata index
-				// TODO: Try to eliminate the negation by shifting twice or even onces
-#define SetDataBit(var, unitColumnData, idxChip, idxChannel, bitMask, bitIndex, chipLineMask, chipLineIndex) \
-	var |= (((-((unitColumnData[idxChip*LINES_PER_CHIP+idxChannel] & bitMask) >>bitIndex))) & chipLineMask);
-	//~ var |= (((((unitColumnData[idxChip*LINES_PER_CHIP+idxChannel] & bitMask) >>bitIndex))) << chipLineIndex);
-
-#define SetUnitDataBits(unitColumnData, dataportUnit, idxChannel, sinUnit, bitMask, bitIndex) \
-	nSinData = 0; \
-	SetDataBit(nSinData, unitColumnData, 0, idxChan, bitMask, bitIndex, SIN_UNIT ## sinUnit ## _CHIP0_MASK, SIN_UNIT ## sinUnit ## _CHIP0_IDX); \
-	SetDataBit(nSinData, unitColumnData, 1, idxChan, bitMask, bitIndex, SIN_UNIT ## sinUnit ## _CHIP1_MASK, SIN_UNIT ## sinUnit ## _CHIP1_IDX); \
-	SetDataBit(nSinData, unitColumnData, 2, idxChan, bitMask, bitIndex, SIN_UNIT ## sinUnit ## _CHIP2_MASK, SIN_UNIT ## sinUnit ## _CHIP2_IDX); \
-	SetDataBit(nSinData, unitColumnData, 3, idxChan, bitMask, bitIndex, SIN_UNIT ## sinUnit ## _CHIP3_MASK, SIN_UNIT ## sinUnit ## _CHIP3_IDX); \
-	SetDataBit(nSinData, unitColumnData, 4, idxChan, bitMask, bitIndex, SIN_UNIT ## sinUnit ## _CHIP4_MASK, SIN_UNIT ## sinUnit ## _CHIP4_IDX); \
-	SetDataBit(nSinData, unitColumnData, 5, idxChan, bitMask, bitIndex, SIN_UNIT ## sinUnit ## _CHIP5_MASK, SIN_UNIT ## sinUnit ## _CHIP5_IDX); \
-	dataportUnit = nSinData;
-
-#define sendAllDataForBit(bitMask, bitIndex) \
-	TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);									\
-	SetUnitDataBits(COLUMNDATA_UNIT0, DATAPORT_UNIT0, idxChan, 0, bitMask, bitIndex); \
-	SetUnitDataBits(COLUMNDATA_UNIT1, DATAPORT_UNIT1, idxChan, 1, bitMask, bitIndex); \
-	SetUnitDataBits(COLUMNDATA_UNIT2, DATAPORT_UNIT2, idxChan, 2, bitMask, bitIndex); \
-	SetUnitDataBits(COLUMNDATA_UNIT3, DATAPORT_UNIT3, idxChan, 3, bitMask, bitIndex); \
-	TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		
-
-
-			sendAllDataForBit(0x80, 7);
-			sendAllDataForBit(0x40, 6);
-			sendAllDataForBit(0x20, 5);
-			sendAllDataForBit(0x10, 4);
-			sendAllDataForBit(0x08, 3);
-			sendAllDataForBit(0x04, 2);
-			sendAllDataForBit(0x02, 1);
-			sendAllDataForBit(0x01, 0);
-
-			//~ uint8_t idxBit = 7;
-			//~ uint8_t nBitMask = 0x80; 	// Using a bitmask that's shifted down every iteration 
-										// is faster than a bit index loop. 
-			//~ do {
-				// Prepare a parallel set of bits to send
-
-
-
-				//~ idxBit--;
+				nSinData |= ((-(COLUMNDATA_UNIT0[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT0_CHIP0);
+				nSinData |= ((-(COLUMNDATA_UNIT0[1*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT0_CHIP1);
+				nSinData |= ((-(COLUMNDATA_UNIT0[2*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT0_CHIP2);
+#if CHIPS_PER_UNIT>3
+				nSinData |= ((-(COLUMNDATA_UNIT0[3*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT0_CHIP3);
+				nSinData |= ((-(COLUMNDATA_UNIT0[4*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT0_CHIP4);
+				nSinData |= ((-(COLUMNDATA_UNIT0[5*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT0_CHIP5);
+#endif /* CHIPS_PER_UNIT>3 */
+				DATAPORT_UNIT0		 = nSinData;					// Data
+				
+				/* ---UNIT 1 --- */
+				nSinData=0; 
+#define			COLUMNDATA_UNIT1	nColumnData[1]
+				nSinData |= ((-(COLUMNDATA_UNIT1[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT1_CHIP0);
+				nSinData |= ((-(COLUMNDATA_UNIT1[1*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT1_CHIP1);
+				nSinData |= ((-(COLUMNDATA_UNIT1[2*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT1_CHIP2);
+#if CHIPS_PER_UNIT>3
+				nSinData |= ((-(COLUMNDATA_UNIT1[3*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT1_CHIP3);
+				nSinData |= ((-(COLUMNDATA_UNIT1[4*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT1_CHIP4);
+				nSinData |= ((-(COLUMNDATA_UNIT1[5*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT1_CHIP5);
+				DATAPORT_UNIT1		 = nSinData;					// Data
+				
+				/* ---UNIT 2 --- */
+				nSinData=0; 
+#define			COLUMNDATA_UNIT2	nColumnData[2]
+#endif /* CHIPS_PER_UNIT>3 */
+				nSinData |= ((-(COLUMNDATA_UNIT2[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT2_CHIP0);
+				nSinData |= ((-(COLUMNDATA_UNIT2[1*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT2_CHIP1);
+				nSinData |= ((-(COLUMNDATA_UNIT2[2*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT2_CHIP2);
+#if CHIPS_PER_UNIT>3
+				nSinData |= ((-(COLUMNDATA_UNIT2[3*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT2_CHIP3);
+				nSinData |= ((-(COLUMNDATA_UNIT2[4*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT2_CHIP4);
+				nSinData |= ((-(COLUMNDATA_UNIT2[5*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT2_CHIP5);
+#endif /* CHIPS_PER_UNIT>3 */
+				DATAPORT_UNIT2		 = nSinData;					// Data
+				
+				/* ---UNIT 3 --- */
+				nSinData=0; 
+#define			COLUMNDATA_UNIT3	nColumnData[3]
+				nSinData |= ((-(COLUMNDATA_UNIT3[0*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT3_CHIP0);
+				nSinData |= ((-(COLUMNDATA_UNIT3[1*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT3_CHIP1);
+				nSinData |= ((-(COLUMNDATA_UNIT3[2*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT3_CHIP2);
+#if CHIPS_PER_UNIT>3
+				nSinData |= ((-(COLUMNDATA_UNIT3[3*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT3_CHIP3);
+				nSinData |= ((-(COLUMNDATA_UNIT3[4*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT3_CHIP4);
+				nSinData |= ((-(COLUMNDATA_UNIT3[5*LINES_PER_CHIP+idxChan] & nBitMask >>idxBit)) & SIN_UNIT3_CHIP5);
+#endif /* CHIPS_PER_UNIT>3 */
+				DATAPORT_UNIT3		 = nSinData;					// Data
+				
+				idxBit--;
 				//~ PORTC = nSinData;
+				TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		// SCLK->high 
 				
 				// Move to the next bitmask
-				//~ nBitMask >>= 1;
-			//~ } while (nBitMask);
+				nBitMask >>= 1;
+			} while (nBitMask);
 
 		} // channel loop
 	
