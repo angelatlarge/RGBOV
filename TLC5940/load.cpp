@@ -36,9 +36,13 @@
 	If we are using 12-bit intensities, then each channel value is a byte+1 nibble, 
 */
 
-#define LEDS_PER_CHIP	5
+#define LEDS_PER_CHIP		5
 #define CHIPS_PER_UNIT		6
-#define LINES_PER_CHIP	(LEDS_PER_CHIP*3)
+#define LINES_PER_CHIP		(LEDS_PER_CHIP*3)
+
+/*
+	Unit = circuit (LED drivers) for one spoke, one side.
+*/
 
 #define SIN_UNIT0_CHIP0	1<<2
 #define SIN_UNIT0_CHIP1	1<<1
@@ -115,6 +119,8 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 	
 	if ( (idxHorizontalPixel<HORZ_PIXELS) && (idxHorizontalPixel<GRAPHIC_WIDTH)) {
 		
+		
+		// Load graphic data and apply palette
 		do { // This is the unit loop
 		
 			uint8_t * curColData = nColumnData[idxUnit];
@@ -166,7 +172,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 		
 		// Now load the data into the TLC5940
 		
-		for (int idxChan = LINES_PER_CHIP-1; idxChan >= 0; idxChan--) {
+		for (uint8_t idxChan = LINES_PER_CHIP; idxChan-- > 0; ) {
 			
 			// Step 1: Send zeros for high 4 bits (pad the high bits)
 				
@@ -189,10 +195,6 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 			// Bit 3
 			TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
 			TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		// SCLK->high: Rising edge of the clock signal clocks in the data
-			//~ for (uint8_t idxBit=0;idxBit<4;idxBit++) {
-				//~ TLC5940_SCLK_PORT 	&= ~(1<<TLC5940_SCLK_BIT);	// SCLK->low
-				//~ TLC5940_SCLK_PORT 	|= 1<<TLC5940_SCLK_BIT;		// SCLK->high: Rising edge of the clock signal clocks in the data
-			//~ }
 			
 			// Step 2: Send real data for the low 8 bits
 			/* 	This code assembles the bits from various parts of the graphic into a variable nSinData
