@@ -1,0 +1,123 @@
+<html>
+<head>
+	<style type="text/css">
+		body 	{ font-family: Georgia; } 	
+		h1, h2, h3 		{ font-family: Arial; } 	
+		.quote	{ 
+			background: #E0E0E0; 
+			padding-top: 0.5em;
+			padding-bottom: 0.5em;
+		}
+		span.code {	font-family: Courier, "Courier New"; } 	
+		P.code 	{	font-family: Courier, "Courier New"; font-size:0.85em;} 	
+		col.centered { text-align:center; }
+		h1 { font-size: 20px; }
+		h2 { font-size: 18px; }
+		h3 { font-size: 16px; }
+	</style>
+	<title>RGBOV output speed</title>
+<script type="text/x-mathjax-config">
+                MathJax.Hub.Config({"HTML-CSS": { preferredFont: "TeX", availableFonts: ["STIX","TeX"], linebreaks: { automatic:true }, EqnChunk: (MathJax.Hub.Browser.isMobile ? 10 : 50) },
+                                    tex2jax: { inlineMath: [ ["\\$", "\\$"] ], displayMath: [ ["$$","$$"], ["\\[", "\\]"] ], processEscapes: true, ignoreClass: "tex2jax_ignore|dno" },
+                                    TeX: {  noUndefined: { attributes: { mathcolor: "red", mathbackground: "#FFEEEE", mathsize: "90%" } } },
+                                    messageStyle: "none"
+                });
+ </script>
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>               
+</head>
+<body>
+
+The problem: we have 120 LEDs that we need to load in (ideally) .746ms. 
+However nothing we have so far can do this fast enough.
+
+<H1>Why does the load need to happen that quickly</H1>
+<p>We assume that bike's top speed is 30mph, which is 13411.2 mm/s. 
+The bike speed relative to ground is the same as ground speed relative to the bike, 
+and if we think about the latter, then it becomes clear that the 
+velocity of a point on the curcumpherence of the wheel is the same.
+This means that the tire moves past some fixed point on a bike at 13411.2 mm/s.
+
+<p>Assuming 10mm wide pixels (near the tire), a single pixel takes 0.746 ms to pass by. 
+We call this the pixel's <b>duration</b>. This tells us that the entire load must take 
+less than 0.746 ms.
+
+<H1>Existing approach to load</H1>
+
+Here's how our existing loading function works: 
+to drive 120 RGB LEDs we have 24 TLC5940 LED drivers.
+We put these 24 drivers into 4 banks, 6 drivers per bank, and we put each bank on a separate port so 
+that the drivers can be loaded in parallel. 
+We'll ignore banks for the rest of this presentation and assume that there is only one bank.
+
+<ul>
+<li>When the graphic is loaded from PROGMEM, we prepare the pallete by taking the intensity specified 
+and translating it to logarithmic intensity using the formula \$Intensity_{out} = 2^{Intensity_{in}}\$
+<li>The load/send function is broken into two parts: the loading of the values into the drivers 
+and the latching of the values. Latching is uninteresting and will be ignored here. The loading function works as follows:
+
+<ul>
+<li>The first part of the loading function loads the data from PROGMEM and transforms it into array of intensities. 
+The data in PROGMEM is stored in the following format:
+
+<br>
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="578.066px" height="190px" viewBox="0 0 578.066 190" enable-background="new 0 0 578.066 190" xml:space="preserve">
+<g>
+	<text transform="matrix(1 0 0 1 100.8721 27.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">palette</tspan><tspan x="3.792" y="14.4" font-family="'Arial'" font-size="12">index</tspan></text>
+	<rect x="91.566" y="0.5" fill="none" stroke="#000000" width="54" height="54"/>
+</g>
+<g>
+	<text transform="matrix(1 0 0 1 154.8721 27.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">palette</tspan><tspan x="3.792" y="14.4" font-family="'Arial'" font-size="12">index</tspan></text>
+	<rect x="145.566" y="0.5" fill="none" stroke="#000000" width="54" height="54"/>
+</g>
+<g>
+	<text transform="matrix(1 0 0 1 208.8721 27.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">palette</tspan><tspan x="3.792" y="14.4" font-family="'Arial'" font-size="12">index</tspan></text>
+	<rect x="199.566" y="0.5" fill="none" stroke="#000000" width="54" height="54"/>
+</g>
+<g>
+	<text transform="matrix(1 0 0 1 262.8721 27.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">palette</tspan><tspan x="3.792" y="14.4" font-family="'Arial'" font-size="12">index</tspan></text>
+	<rect x="253.566" y="0.5" fill="none" stroke="#000000" width="54" height="54"/>
+</g>
+<text transform="matrix(1 0 0 1 0 27.5)" font-family="'Arial'" font-size="12">Graphic</text>
+<text transform="matrix(1 0 0 1 2.0942 162.5)" font-family="'Arial'" font-size="12">Palette</text>
+<g>
+	<text transform="matrix(1 0 0 1 115.3379 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">R</tspan><tspan x="-18.419" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<text transform="matrix(1 0 0 1 139.4404 126.5)" font-family="'Arial'" font-size="12">Palette entry </text>
+	<rect x="91.566" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 168.6899 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">G</tspan><tspan x="-17.771" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="145.566" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 223.314 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">B</tspan><tspan x="-18.396" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="199.566" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<rect x="91.566" y="108.5" fill="none" stroke="#000000" width="162" height="81"/>
+</g>
+<g>
+	<text transform="matrix(1 0 0 1 277.3374 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">R</tspan><tspan x="-18.419" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<text transform="matrix(1 0 0 1 301.4409 126.5)" font-family="'Arial'" font-size="12">Palette entry </text>
+	<rect x="253.566" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 330.6899 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">G</tspan><tspan x="-17.771" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="307.566" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 385.314 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">B</tspan><tspan x="-18.396" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="361.566" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<rect x="253.566" y="108.5" fill="none" stroke="#000000" width="162" height="81"/>
+</g>
+<g>
+	<text transform="matrix(1 0 0 1 439.3374 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">R</tspan><tspan x="-18.419" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<text transform="matrix(1 0 0 1 463.4409 126.5)" font-family="'Arial'" font-size="12">Palette entry </text>
+	<rect x="415.566" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 492.6899 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">G</tspan><tspan x="-17.771" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="469.566" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 547.314 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">B</tspan><tspan x="-18.396" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="523.566" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<rect x="415.566" y="108.5" fill="none" stroke="#000000" width="162" height="81"/>
+</g>
+</svg>
+
+<BR>The reason for this storage format in flash is memory minimization. 
+However, prior to loading it is convenient to have the data to be loaded as an array of intensities as follows:
+</ul>
+<ul>
+
+<P>We Create a column to send to the LED drivers. This is done for every column.  We are ignoring "units" (i.e. the fact that there are two sides and two spokes) here.
+
+</body>
+</html>
