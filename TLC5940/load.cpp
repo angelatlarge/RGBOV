@@ -1,6 +1,7 @@
 #include <string.h>
 #include "../shared/load.h"
 #include "../shared/settings.h"
+#include "strfmt.h"
 
 /*
 	To try:
@@ -44,42 +45,7 @@
 	Unit = circuit (LED drivers) for one spoke, one side.
 */
 
-#define SIN_UNIT0_CHIP0	1<<2
-#define SIN_UNIT0_CHIP1	1<<1
-#define SIN_UNIT0_CHIP2	1<<0
-#define SIN_UNIT0_CHIP3	1<<3
-#define SIN_UNIT0_CHIP4	1<<4
-#define SIN_UNIT0_CHIP5	1<<5
 
-#define SIN_UNIT1_CHIP0	1<<2
-#define SIN_UNIT1_CHIP1	1<<1
-#define SIN_UNIT1_CHIP2	1<<0
-#define SIN_UNIT1_CHIP3	1<<3
-#define SIN_UNIT1_CHIP4	1<<4
-#define SIN_UNIT1_CHIP5	1<<5
-
-#define SIN_UNIT2_CHIP0	1<<2
-#define SIN_UNIT2_CHIP1	1<<1
-#define SIN_UNIT2_CHIP2	1<<0
-#define SIN_UNIT2_CHIP3	1<<3
-#define SIN_UNIT2_CHIP4	1<<4
-#define SIN_UNIT2_CHIP5	1<<5
-
-#define SIN_UNIT3_CHIP0	1<<2
-#define SIN_UNIT3_CHIP1	1<<1
-#define SIN_UNIT3_CHIP2	1<<0
-#define SIN_UNIT3_CHIP3	1<<3
-#define SIN_UNIT3_CHIP4	1<<4
-#define SIN_UNIT3_CHIP5	1<<5
-
-#define DATAPORT_UNIT0	PORTC
-#define DATAPORT_UNIT1	PORTC
-#define DATAPORT_UNIT2	PORTC
-#define DATAPORT_UNIT3	PORTC
-
-uint8_t anChipOutputLine[SIDES_COUNT*SPOKES_COUNT][CHIPS_PER_UNIT] = {{1<<2, 1<<1, 1<<0, 1<<3, 1<<4, 1<<5}, {1<<2, 1<<1, 1<<0, 1<<3, 1<<4, 1<<5}, {1<<2, 1<<1, 1<<0, 1<<3, 1<<4, 1<<5}, {1<<2, 1<<1, 1<<0, 1<<3, 1<<4, 1<<5}};
-volatile uint8_t* anChipOutPort[SIDES_COUNT*SPOKES_COUNT] = { &PORTC, &PORTC, &PORTC, &PORTC };
-volatile uint8_t* anChipOutDDR[SIDES_COUNT*SPOKES_COUNT] = { &DDRC, &DDRC, &DDRC, &DDRC };
 	
 /*
 #define TLC5940_SIN_BIT		0
@@ -109,9 +75,9 @@ volatile uint8_t* anChipOutDDR[SIDES_COUNT*SPOKES_COUNT] = { &DDRC, &DDRC, &DDRC
 
 #define PROGMEM_GRAPHIC
 	
-static uint8_t nColumnData[SIDES_COUNT*SPOKES_COUNT][COLUMN_DATA_BYTES];
+//~ static uint8_t nColumnData[SIDES_COUNT*SPOKES_COUNT][COLUMN_DATA_BYTES];
 static uint8_t h = (VERTICAL_PIXELS<GRAPHIC_HEIGHT) ? VERTICAL_PIXELS : GRAPHIC_HEIGHT;
-
+#define VOLREG
 
 void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 	
@@ -120,38 +86,44 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 	uint8_t idxUnit = 0;
 	
 	if ( (idxHorizontalPixel<HORZ_PIXELS) && (idxHorizontalPixel<GRAPHIC_WIDTH)) {
+		uint16_t bytesCount = 0;
 	
 		do { // This is the unit loop
-			uint8_t * curColData = nColumnData[idxUnit];
-			const register uint8_t * ptrGraphic = &(graphic[idxHorizontalPixel][GRAPHIC_HEIGHT-1]);
-			register uint8_t idxChannel = 0;
-			register uint8_t nPaletteIndex = pgm_read_byte(ptrGraphic--);
-			register uint8_t dataByte = palette[nPaletteIndex*3+idxChannel++];
-			idxChannel = idxChannel%3;
-			register uint8_t toSPDR = dataByte >> 4;
-			register uint8_t idxSendType = 0;
-			register uint8_t bytesToSend = h*3;
+			
+			// Different curColDatas are not implemented yet
+			//~ uint8_t * curColData = nColumnData[idxUnit];
+			const uint8_t * ptrGraphic = &(graphic[idxHorizontalPixel][GRAPHIC_HEIGHT-1]);
+			VOLREG uint8_t idxChannel = 0;
+			VOLREG uint8_t nPaletteIndex = pgm_read_byte(ptrGraphic--);
+			VOLREG uint8_t dataByte = palette[nPaletteIndex*3+idxChannel++];
+			VOLREG uint8_t toSPDR = dataByte >> 4;
+			VOLREG uint8_t idxNextSendType = 0;
+			uint8_t pixelsToSend = VERTICAL_PIXELS+1; 
 			
 			do { // Send bytes loop
 				SPDR = toSPDR;			// Send the byte
+				bytesCount++;
 				
 				// Update the send type
-				idxSendType++; idxSendType=idxSendType%3;
+				if (++idxNextSendType > 3) { idxNextSendType = 0; }
+				//~ idxSendType++; idxSendType=idxSendType%3;
+				
 				// Prepare the next one for loading
-				if (idxSendType==1) {
+				if (idxNextSendType==1) {
 						// Case 1: Need to send the low nibble + padding
 						toSPDR = dataByte<<4;
-						break;
 				} else {
 					// Either way we need another new data in dataByte
 					if (idxChannel==0) {
 						// Load next palette index
 						nPaletteIndex = pgm_read_byte(ptrGraphic--);
+						pixelsToSend--;
 					}
-					dataByte = palette[nPaletteIndex*3+idxChannel++];
-					idxChannel = idxChannel%3;
+					dataByte = palette[nPaletteIndex*3+idxChannel];
+					if (++idxChannel>2) idxChannel = 0;
+					//~ idxChannel = idxChannel%3;
 					
-					if (idxSendType) {
+					if (idxNextSendType) {
 						// idxSendType == 2
 						// Case 2: Need to send pure data
 						toSPDR = dataByte;
@@ -160,16 +132,24 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 						toSPDR = dataByte >> 4;
 					}
 				}
+
+				while(!(SPSR & (1<<SPIF))) 	// Wait for the transfer to finish
+					;				
 				
-				while (! (SPSR & (1<<SPIF) ) );		// Wait for the transfer to finish
-				
-			} while (--bytesToSend > 0);	// End of send bytes loop
+			} while (pixelsToSend > 0);	// End of send bytes loop
 			
 			
 		} while (++idxUnit < SIDES_COUNT*SPOKES_COUNT);	// 	End of the unit loop,
 		
-		// No need to pad, because the chips down the line will not 
-	}		
+		// No need to pad, because the chips down the line will not get any data
+	}	
+
+#ifdef DEBUG_OUT		
+		dputsi("VERTICAL_PIXELS: ", VERTICAL_PIXELS, 0);
+		dputs(" Bytes sent: ", 0);
+		dputi(bytesCount, 0);
+		dputs(" sent ", 1);
+#endif /* DEBUG_OUT */
 }
 
 void loadingUpdateDisplay(uint8_t idxHorizontalPixel) {
@@ -182,18 +162,6 @@ void loadingInitDisplay() {
 	CLKPR = 0;
 	
 	
-	// Set output pins
-	for (int i=0; i<SIDES_COUNT*SPOKES_COUNT; i++) {
-		*(anChipOutDDR[i]) = 0xFF;
-	}
-	TLC5940_XLAT_DDR |= 1<<TLC5940_XLAT_BIT;
-	TLC5940_SCLK_DDR |= 1<<TLC5940_SCLK_BIT;
-	TLC5940_DCPRG_DDR |= 1<<TLC5940_DCPRG_BIT;
-	TLC5940_VPRG_DDR |= 1<<TLC5940_VPRG_BIT;
-
-	// XLAT = low means data is ready to be activated, 
-	// so we want to set XLAT high
-	TLC5940_XLAT_PORT |= 1<<TLC5940_XLAT_BIT;			// XLAT -> high
 	
 	// Greyscale timer
 	//~ Setting the COM2x1:0 bits to two will produce a non-inverted PWM and an inverted PWM output
@@ -228,20 +196,24 @@ void loadingInitDisplay() {
 		// Nothing to do 
 #	endif /* PRECOMPUTE_PALETTE */
 	
+	// Set SPI pins to output
+	DDRB = 0xFF;
+		
 	// Set up SPI
 	SPCR = 0
 		|(0<<SPIE)			// Interrupt enable
 		|(1<<SPE)			// Bit 6 – SPE: SPI Enable
 		|(0<<DORD)			// Bit 5 – DORD: Data Order
 							// When the DORD bit is written to zero, the MSB of the data word is transmitted first
-		|(1<<DORD)			// Bit 4 – MSTR: Master/Slave Select
+		|(1<<MSTR)			// Bit 4 – MSTR: Master/Slave Select
 							// This bit selects Master SPI mode when written to one
 		|(0<<CPOL)			// Bit 3 – CPOL: Clock Polarity
 							// When CPOL is written to zero, SCK is low when idle.
 		|(0<<CPHA)			// Bit 2 – CPHA: Clock Phase
-		|(0<<SPR1)|(0<<SPR1)// Clock
+		|(0<<SPR1)|(0<<SPR0)// Clock: F_CPU/4
 		;
 	SPSR = 0
 		|(1<<SPI2X)			// Bit 0 – SPI2X: Double SPI Speed Bit
 		;
+		
 }
