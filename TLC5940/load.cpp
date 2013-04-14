@@ -264,17 +264,17 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 }
 
 void loadingUpdateDisplay(uint8_t idxHorizontalPixel) {
-	PORTD |= 1<<3;
-	uint8_t tcc1bSave = TCCR1B;
-	TCCR2B &= ~((1<<CS22)|(1<<CS21)|(1<<CS20));
-	for (int i=0;i<10000;i++) nop();
+	//~ PORTD |= 1<<3;
+	//~ uint8_t tcc1bSave = TCCR1B;
+	//~ TCCR2B &= ~((1<<CS22)|(1<<CS21)|(1<<CS20));
+	//~ for (int i=0;i<10000;i++) nop();
 	TLC5940_XLAT_PORT |= 1<<TLC5940_XLAT_BIT;			// XLAT -> high
 	//~ TCNT2H = 0;
 	//~ for (int i=0;i<10000;i++) nop();
-	TCNT2 = 0;
-	PORTD &= ~(1<<3);
+	//~ TCNT2 = 0;
+	//~ PORTD &= ~(1<<3);
 	//~ for (int i=0;i<10000;i++) nop();
-	TCCR2B = tcc1bSave;
+	//~ TCCR2B = tcc1bSave;
 	//~ for (int i=0;i<10000;i++) nop();
 	TLC5940_XLAT_PORT &= ~(1<<TLC5940_XLAT_BIT);			// XLAT -> low
 }
