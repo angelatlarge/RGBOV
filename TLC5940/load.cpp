@@ -97,10 +97,10 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 	TLC5940_XLAT_PORT &= ~(1<<TLC5940_XLAT_BIT);		// XLAT -> low
 
 	uint8_t idxUnit = 0;
-	uint32_t nBitsSent = 0;
 	
 	if ( (idxHorizontalPixel<HORZ_PIXELS) && (idxHorizontalPixel<GRAPHIC_WIDTH)) {
 
+		uint32_t nBitsSent = 0;
 		
 		do { // This is the unit loop
 			
@@ -115,16 +115,19 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 				So if we start by sending the empty 12-bit value, we are OK
 				This padding needs to be done for every chip
 			*/
-			padSPI(0);
+			//~ padSPI(0);
 			SPDR = 0;					// First 8 bits of the empty 12-bit data
-			while(!(SPSR & (1<<SPIF))) 	// Wait for the transfer to finish
-				;				
+			while(!(SPSR & (1<<SPIF))) {
+				// Wait for the transfer to finish
+			}
 			SPDR = 0;					// Last 4 bits of the empty 12-bit data
 										// plus the empty 4 high bits of the first intensity data
-			while(!(SPSR & (1<<SPIF))) 	// Wait for the transfer to finish
-				;		
+			while(!(SPSR & (1<<SPIF))) {
+				// Wait for the transfer to finish
+			}
 			nBitsSent += 16;
-			
+			VOLREG uint8_t idxNextSendType = 2;	// The next send type is type 2
+												// so we indicate that
 			
 			// Different curColDatas are not implemented yet
 			//~ uint8_t * curColData = nColumnData[idxUnit];
@@ -133,14 +136,46 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 			
 			VOLREG uint8_t idxChannel = 0;
 			VOLREG uint8_t nPaletteIndex = pgm_read_byte(--ptrGraphic);
+#if REAL_DATA			
 			VOLREG uint8_t dataByte = palette[nPaletteIndex*3+idxChannel++];
+#else 			
+			VOLREG uint8_t dataByte = (idxChannel++==2)?0xFF:0x00;
+			//~ if (idxChannel==0) { dataByte = 0xFF; } else { dataByte = 0; }
+#endif			
 			VOLREG uint8_t toSPDR = dataByte;
-			VOLREG uint8_t idxNextSendType = 1;
 			VOLREG uint8_t nPixelsSent = 0;
 			
 			for (;;) { // Send bytes loop
 				SPDR = toSPDR;			// Send the byte
+				while(!(SPSR & (1<<SPIF))) {
+					// Wait for the transfer to finish
+				}
 				nBitsSent += 8;
+				
+#define PADDING
+#ifdef PADDING
+				//~ if (nPixelsSent && (nPixelsSent % 5) ) {
+				if (nBitsSent % 192 == 0) {
+					if (nBitsSent == 192 *3)
+						break;
+					
+					
+					SPDR = 0;					// First 8 bits of the empty 12-bit data
+					while(!(SPSR & (1<<SPIF))) {
+						// Wait for the transfer to finish
+					}
+					SPDR = 0;					// Last 4 bits of the empty 12-bit data
+												// plus the empty 4 high bits of the first intensity data
+					while(!(SPSR & (1<<SPIF))) {
+						// Wait for the transfer to finish
+					}
+					idxNextSendType = 1;		// It will get incremented first
+												// so the first byte will actually be
+												// idxNextSendType = 2
+
+					nBitsSent += 16;
+				}
+#endif								
 				
 				// Update the send type
 				if (++idxNextSendType>2) { idxNextSendType = 0; }
@@ -150,26 +185,19 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 				if (idxNextSendType==1) {
 						// Case 1: Need to send the low nibble + padding
 						toSPDR = dataByte<<4;
-					
-						/////////////////////////
-						//~ toSPDR = 0x00; 
 				} else {
 					// Either way we need another new data in dataByte
 					// 
 					if (idxChannel==0) {
 						// Load next palette index
-						//~ if (--ptrGraphic < ptrGraphicFirst)
-							//~ break;
+						if (--ptrGraphic < ptrGraphicFirst)
+							break;
 						nPaletteIndex = pgm_read_byte(ptrGraphic);
 						nPixelsSent++;
 					}
 					
-					//~ dataByte = palette[nPaletteIndex*3+idxChannel];
-					if (!idxChannel) {
-						dataByte = 0xFF;
-					} else {
-						dataByte = 0;
-					}
+					dataByte = palette[nPaletteIndex*3+idxChannel];
+					if (idxChannel==2) { dataByte = 0xFF; } else { dataByte = 0; }
 					
 					if (++idxChannel>2) idxChannel = 0;
 					//~ This fails: ++idxChannel %= 3;
@@ -178,76 +206,23 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 						// idxSendType == 2
 						// Case 2: Need to send pure data
 						toSPDR = dataByte;
-						
-						/////////////////////////
-						//~ toSPDR = 0x00; 
-						
 					} else {
 						// idxSendType == 0
 						// Case 0: Need to send padding + high nibble
 						toSPDR = dataByte >> 4;
-						
-						/////////////////////////
-						//~ toSPDR = 0x00; 
 					}
 				}
 
 				while(!(SPSR & (1<<SPIF))) 	// Wait for the transfer to finish
 					;				
 				
-				
-#define PADDING
-#ifdef PADDING
-				//~ if (nPixelsSent && (nPixelsSent % 5) ) {
-				if (nBitsSent % 192 == 0) {
-					if (nBitsSent == 192 *3)
-						break;
-					
-					//~ padSPI(0);
-					
-				//~ if ( (nBitsSent ==  372) || (nBitsSent ==  10) ) {
-					SPDR = 0;					// First 8 bits of the empty 12-bit data
-					while(!(SPSR & (1<<SPIF))) 	// Wait for the transfer to finish
-						;				
-					SPDR = 0;					// Last 4 bits of the empty 12-bit data
-												// plus the empty 4 high bits of the first intensity data
-					while(!(SPSR & (1<<SPIF))) 	// Wait for the transfer to finish
-						;		
-					idxNextSendType = 1;
-					nBitsSent += 16;
-
-				}
-#endif				
 			} // End of send bytes loop
 			
 			
 		} while (++idxUnit < SIDES_COUNT*SPOKES_COUNT);	// 	End of the unit loop,
 		
 		// No need to pad, because the chips down the line will not get any data
-	} else {
-		// Send black
-#if defined FIRST_WAY
-		PORTB &= ~(1<<3);			// Data line low
-		for (uint16_t i=0;i<144*8;i++) {
-			PORTB |= (1<<5);			// Clock high
-			nop();
-			PORTB &= ~(1<<5);		// Clock low
-		}
-#elif defined DO_SOMETHING
-		for (uint8_t i=0;i<144;i++) {
-			SPDR = 0;			// Send the byte
-			while(!(SPSR & (1<<SPIF))) 	// Wait for the transfer to finish
-				;				
-		}		
-#else		
-		// Do nothing
-#endif		
-		// Leave the data line low
-		// doesn't work when SPI is enabled
-		PORTB &= ~(1<<3);			// Data line low
-	}
-
-	
+		
 #define DEBUG_OUT	
 #ifdef DEBUG_OUT
 		//~ dputsi("VERTICAL_PIXELS: ", VERTICAL_PIXELS, 0);
@@ -257,10 +232,51 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 			dputs(" sent ", 1);
 		}
 #endif /* DEBUG_OUT */
+		
+	} else {
+		// Send black
+#if defined FIRST_WAY
+		PORTB &= ~(1<<3);			// Data line low
+		for (uint16_t i=0;i<144*8;i++) {
+			PORTB |= (1<<5);			// Clock high
+			nop();
+			PORTB &= ~(1<<5);		// Clock low
+		}
+#endif 
+//~ #define DO_SOMETHING		
+#ifdef DO_SOMETHING
+		for (uint8_t i=0;i<72;i++) {
+			SPDR = 0;			// Send the byte
+			while(!(SPSR & (1<<SPIF))) 	// Wait for the transfer to finish
+				;				
+		}		
+#else		
+		// Do nothing
+#endif		
+		// Leave the data line low
+		// doesn't work when SPI is enabled
+		//~ PORTB &= ~(1<<3);			// Data line low
+		
+		
+	}
+
+	
 }
 
 void loadingUpdateDisplay(uint8_t idxHorizontalPixel) {
+	PORTD |= 1<<3;
+	uint8_t tcc1bSave = TCCR1B;
+	TCCR2B &= ~((1<<CS22)|(1<<CS21)|(1<<CS20));
+	for (int i=0;i<10000;i++) nop();
 	TLC5940_XLAT_PORT |= 1<<TLC5940_XLAT_BIT;			// XLAT -> high
+	//~ TCNT2H = 0;
+	//~ for (int i=0;i<10000;i++) nop();
+	TCNT2 = 0;
+	PORTD &= ~(1<<3);
+	//~ for (int i=0;i<10000;i++) nop();
+	TCCR2B = tcc1bSave;
+	//~ for (int i=0;i<10000;i++) nop();
+	TLC5940_XLAT_PORT &= ~(1<<TLC5940_XLAT_BIT);			// XLAT -> low
 }
 
 void loadingInitDisplay() {
@@ -317,11 +333,13 @@ void loadingInitDisplay() {
 		|(0<<CPHA)			// Bit 2 – CPHA: Clock Phase
 		//~ |(0<<SPR1)|(0<<SPR0)// Clock: Fosc/4
 		//~ |(1<<SPR1)|(1<<SPR0)// Clock: Focs/128
-		|(1<<SPR1)|(0<<SPR0)// Clock: Focs/64
+		//~ |(1<<SPR1)|(0<<SPR0)// Clock: Focs/64
+		//~ |(1<<SPR1)|(0<<SPR0)// Clock: Focs/64
+		|(1<<SPR1)|(1<<SPR0)// 
 		;
 	SPSR = 0
-		|(0<<SPI2X)			// Bit 0 – SPI2X: Double SPI Speed Bit
-		//~ |(1<<SPI2X)			// Bit 0 – SPI2X: Double SPI Speed Bit
+		//~ |(0<<SPI2X)			// Bit 0 – SPI2X: Double SPI Speed Bit
+		|(1<<SPI2X)			// Bit 0 – SPI2X: Double SPI Speed Bit
 		;
 		
 }
