@@ -429,6 +429,10 @@ volatile	uint8_t	idxHorizontalPixel;
 //~ #define WHEEL_SPEED_TIMER_PRESCALER		256
 //~ #define WHEEL_SPEED_TIMER_PRESC_BITS	(1<<CS02)|(0<<CS01)|(0<<CS00)
 
+//~ #define WHEEL_SPEED_TIMER_OCR			1
+//~ #define WHEEL_SPEED_TIMER_PRESCALER		64
+//~ #define WHEEL_SPEED_TIMER_PRESC_BITS	(0<<CS02)|(1<<CS01)|(1<<CS00)
+
 #define WHEEL_SPEED_TIMER_OCR			4
 #define WHEEL_SPEED_TIMER_PRESCALER		256
 #define WHEEL_SPEED_TIMER_PRESC_BITS	(1<<CS02)|(0<<CS01)|(0<<CS00)
@@ -505,7 +509,7 @@ ISR(INT0_vect) {
 				// Must use a prescaler higher than one. Using 8
 				nIntensTimerPrescaler = 8;
 				TCCR1B = 0
-					|(0<<CS12)|(1<<CS11)|(8<<CS10)			// Prescaler=1
+					|(0<<CS12)|(1<<CS11)|(1<<CS10)			// Prescaler=8
 					|(0<<WGM13)|(1<<WGM12)					// CTC Mode
 					;
 
@@ -519,11 +523,12 @@ ISR(INT0_vect) {
 			}
 			OCR1A = round(F_CPU/float(nIntensTimerPrescaler)/fWheelFreq/(float)(INTENSITY_COUNTER_MAX)/(float)HORZ_PIXELS);
 
-#undef DPRINTBTH
+#define DPRINTBTH
 #ifdef DPRINTBTH
 //			dputsi("INTENSITY_COUNTER_MAX: ", INTENSITY_COUNTER_MAX);
 			dputsl("nTicksPerRevolution: ", nTicksPerRevolution);
 			dputsf("fWheelFreq: ", fWheelFreq, 2);
+			dputsf("Est. Speed : ", fWheelFreq * 4.697566213, 3);
 			dputsi("Prescaler: ", nIntensTimerPrescaler);
 			dputsl("OCR1A: ", OCR1A);
 #endif
@@ -550,6 +555,25 @@ ISR(TIMER1_COMPA_vect ) {
 
 
 int main() {
+	CLKPR = 1<<CLKPCE;
+#if CLOCK_PRESCALE==1
+#	warning Clock prescaler set to 1
+	CLKPR = (0<<CLKPS3)|(0<<CLKPS2)|(0<<CLKPS1)|(0<<CLKPS0);
+#elif CLOCK_PRESCALE==8
+#	warning Clock prescaler set to 8
+	CLKPR = (0<<CLKPS3)|(0<<CLKPS2)|(1<<CLKPS1)|(1<<CLKPS0);
+#elif CLOCK_PRESCALE==64
+#	warning Clock prescaler set to 64
+	CLKPR = (0<<CLKPS3)|(1<<CLKPS2)|(1<<CLKPS1)|(0<<CLKPS0);
+#elif CLOCK_PRESCALE==128
+#	warning Clock prescaler set to 128
+	CLKPR = (0<<CLKPS3)|(1<<CLKPS2)|(1<<CLKPS1)|(1<<CLKPS0);
+#elif CLOCK_PRESCALE==256
+#	warning Clock prescaler set to 256
+	CLKPR = (1<<CLKPS3)|(0<<CLKPS2)|(0<<CLKPS1)|(0<<CLKPS0);
+#else
+#error Clock prescaler not set (correctly)
+#endif	
 	serial_init();
 	puts("Hello, world");
 
@@ -603,10 +627,24 @@ int main() {
 	OCR1A = 0xFFFF;							// Not doing anything until we get a wheel speed
 	TIMSK1 = (1<<OCIE1A);					// Enable interrupt on timer1
 
+	// Wheel speed timer: default settings
+	TCCR1B = 0
+		|(0<<CS12)|(1<<CS11)|(1<<CS10)			// Prescaler=8
+		|(0<<WGM13)|(1<<WGM12)					// CTC Mode
+		;
+	OCR1A = 1;
+
+
 	sei();									// Enable interrupts
 	
 
 	loadingInitDisplay();
+
+	for (;;) {
+		loadingPrepareUpdate(0);
+		loadingUpdateDisplay(0);
+		_delay_ms(500);
+	}
 
 	//~ uint8_t anData[4] = {0x00, 0x00, 0x00, 0x00};
 	//~ sr.forceWriteData(0, 4, anData);	
@@ -618,7 +656,10 @@ int main() {
 		if (nIntensityTimerHitCounter != 0) {
 			// Time to load some data into the LEDs!
 			
+			// Reset the counter
 			nIntensityTimerHitCounter = 0;
+			
+			// Prepare the display if not prepared yet
 			if (!nDisplayPrepared) {
 				loadingPrepareUpdate(
 					idxHorizontalPixel
@@ -628,6 +669,8 @@ int main() {
 					);
 				
 			}
+			
+			// Update the display
 			loadingUpdateDisplay(
 				idxHorizontalPixel
 #				if INTENSITY_LEVELS>1			
@@ -649,6 +692,7 @@ int main() {
 			
 		} else {
 			// No intensity timer hit
+			// Just prepare the display
 			if (!nDisplayPrepared) {
 				uint16_t nStart = nHiResTimebaseCount;
 				loadingPrepareUpdate(
@@ -658,9 +702,9 @@ int main() {
 	#				endif /* INTENSITY_LEVELS>1 */
 					);
 				int16_t nCount = nHiResTimebaseCount - nStart;
-				//~ if ( nCount > 2) {
+				if ( nCount > 2) {
 					dputsi(" ", nCount, 0);
-				//~ }
+				}
 				nDisplayPrepared = 1;
 			}
 		}			
