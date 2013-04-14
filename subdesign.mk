@@ -74,8 +74,9 @@
 #~ MCU=atmega16
 #~ MCU=atmega32
 MCU=atmega328p
-#MACROS+=-D F_CPU=8000000UL
-MACROS+=-D F_CPU=20000000UL
+MACROS+=-D CLOCK_PRESCALE=8U
+#~ MACROS+=-D CLOCK_PRESCALE=256UL
+MACROS+=-D F_CPU="(20000000UL/CLOCK_PRESCALE)"
 PROGRAMMER_MCU=m328pu
 
 #~ # For atmega644
@@ -148,7 +149,8 @@ LIBDIRS+=-L../../avr_libs/serial
 LIBDIRS+=-L../../avr_libs/strfmt
 
 #libs
-LIBS+=$(AVR_DIR)/avr/lib/libm.a
+#~ LIBS+=$(AVR_DIR)/avr/lib/libm.a
+LIBS+=$(LIBC_DIR)/libm.a
 
 # Additional explicit dependencies
 #~ $(OBJDIR)/RGBOV.o: 	../shared/glcdfont.c ../shared/graphic.c ../shared/settings.h ../shared/load.h
@@ -224,20 +226,11 @@ LDFLAGS=									\
 	#~ --gc-sections			\
 	#~ $(LIBDIRS) $(LIBS)
 
-##### directories ####
-AVR_DIR=/usr/local/avr
-TOOLS_DIR=$(AVR_DIR)/bin
+##### directories and executables ####
+##### are defined in a different file ####
+include ../local.mk
 
-##### executables ####
-CC=$(TOOLS_DIR)/avr-gcc
-OBJCOPY=$(TOOLS_DIR)/avr-objcopy
-SYMLIST=$(TOOLS_DIR)/avr-nm
-OBJDUMP=$(TOOLS_DIR)/avr-objdump
-#~ SIZE=$(TOOLS_DIR)/avr-size -B
-SIZE=/home/kirill/arduino/arduino-1.0/hardware/tools/avr/bin/avr-size 
 SIZEOPTS+=-C --mcu=${MCU_SIZE}
-AVRDUDE=/home/kirill/arduino/arduino-1.0/hardware/tools/avr/bin/avrdude.exe
-REMOVE=rm -f
 
 ##### fuse files ####
 ifndef ISP_READFUSEFILE_LOW_FILE
@@ -279,9 +272,7 @@ endif
 #        -U flash:w:obj/RGBOV.hex
 
 
-AVRDUDE_CONF = C:\\cygwin\\home\\kirill\\arduino\\arduino-1.0\\hardware\\tools\\avr\\etc\\avrdude.conf
 #AVRDUDE_PORT_SERIAL = /dev/ttyS18
-AVRDUDE_PORT_SERIAL = COM18
 AVRDUDE_PROGRAMMER_ISP = -c usbtiny
 AVRDUDE_COM_OPTS = 			\
 	-p $(PROGRAMMER_MCU) 	
