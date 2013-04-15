@@ -3,17 +3,7 @@
 #include "../shared/settings.h"
 #include "strfmt.h"
 
-/*
-	To try:
-		A. Load directly into the port (w/o the intermediate register)
-		B. Avoid branching in loading
-*/
 
-#if GRAPHIC_HEIGHT>VERTICAL_PIXELS
-#	define COLUMN_DATA_BYTES	(GRAPHIC_HEIGHT*3)
-#else
-#	define COLUMN_DATA_BYTES	(VERTICAL_PIXELS*3)
-#endif
 
 #if INTENSITY_LEVELS>1			
 #error For TLC5940 INTENSITY_LEVELS must be set at zero
@@ -24,18 +14,27 @@
 
 #include "../shared/graphic.c"
 
+#if GRAPHIC_HEIGHT>VERTICAL_PIXELS
+#	define COLUMN_DATA_BYTES	(GRAPHIC_HEIGHT*3)
+#else
+#	define COLUMN_DATA_BYTES	(VERTICAL_PIXELS*3)
+#endif
+
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+
+#pragma message "#################################"
+#pragma message "###   Horizontal pixels " STR(HORZ_PIXELS)      "   ###"
+#pragma message "###   Vertical pixels    " STR(VERTICAL_PIXELS) "   ###"
+#pragma message "###   Graphic height     " STR(GRAPHIC_HEIGHT)  "   ###"
+#pragma message "###   Sides               " STR(SIDES_COUNT)  "   ###"
+#pragma message "###   Spokes              " STR(SPOKES_COUNT)  "   ###"
+#pragma message "#################################"
+
+
 #define PRECOMPUTE_PALETTE		/* 	Optimization that does palette exponentiation at initialization.  
 									Can saves about 51.2us of the loading time
 									*/
-/*
-	We have a vertical line in PROGMEM
-	Each byte in the vertical line is a palette index
-	Each palette entry is 3 bytes, however, 
-	we cannot send that directly.
-	we must produce the intensity value from the pal idx by raising two to its power.
-	If we are using 8-bit intensity, it is easy: each channel value is a byte (though in sending it must be padded anyway)
-	If we are using 12-bit intensities, then each channel value is a byte+1 nibble, 
-*/
 
 #define LEDS_PER_CHIP		5
 #define CHIPS_PER_UNIT		6
@@ -109,12 +108,14 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 			// Different curColDatas are not implemented yet
 			//~ uint8_t * curColData = nColumnData[idxUnit];
 			const uint8_t * ptrGraphicFirst = &(graphic[idxHorizontalPixel][0]);
-			const uint8_t * ptrGraphicLast = ptrGraphicFirst + useHeight;
-			const uint8_t * ptrGraphic = ptrGraphicLast;
-			//~ const uint8_t * ptrGraphic = ptrGraphicFirst;
+			const uint8_t * ptrGraphicLastPlusOne = ptrGraphicFirst + GRAPHIC_HEIGHT;
+			const uint8_t * ptrGraphic = ptrGraphicFirst + VERTICAL_PIXELS; // Note: we'll use PRE-INCREMENT EVERYWHERE
 			
 			VOLREG uint8_t idxChannel = 0;
-			VOLREG uint8_t nPaletteIndex = pgm_read_byte(ptrGraphic--);
+			VOLREG uint8_t nPaletteIndex = 0;
+			if (--ptrGraphic<ptrGraphicLastPlusOne) {
+				nPaletteIndex = pgm_read_byte(ptrGraphic);
+			} 
 			VOLREG uint8_t dataByte = palette[nPaletteIndex*3+idxChannel++];
 			//~ VOLREG uint8_t dataByte = (idxChannel++>=1)?0xFF:0x00;
 			
@@ -163,9 +164,10 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 					// Either way we need another new data in dataByte
 					if (idxChannel==0) {
 						// Load next palette index
-						if (ptrGraphic-- < ptrGraphicFirst)
+						if (--ptrGraphic < ptrGraphicFirst)
 							break;
-						nPaletteIndex = pgm_read_byte(ptrGraphic);
+						if (ptrGraphic<ptrGraphicLastPlusOne)
+							nPaletteIndex = pgm_read_byte(ptrGraphic);
 						nPixelsSent++;
 					}
 					
@@ -190,42 +192,26 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 			
 		} while (++idxUnit < SIDES_COUNT*SPOKES_COUNT);	// 	End of the unit loop,
 		
-		// No need to pad, because the chips down the line will not get any data
-		
-//~ #define DEBUG_OUT	
-#ifdef DEBUG_OUT
-		//~ dputsi("VERTICAL_PIXELS: ", VERTICAL_PIXELS, 0);
-		if (nBitsSent > 0) {
-			dputs(" Bits sent: ", 0);
-			dputi(nBitsSent, 0);
-			dputs(" sent ", 1);
-		}
-#endif /* DEBUG_OUT */
-		
 	} else {
-		// Send black
-#if defined FIRST_WAY
+		// We are past the end of the graphic, Send black
+#ifdef BLANK_MANUALLY
+		// Manual blanking by twiddling the clock bit
+		SPCR &= ~(1<<SPE)		// Disable SPI
 		PORTB &= ~(1<<3);			// Data line low
-		for (uint16_t i=0;i<144*8;i++) {
+		for (uint16_t i=0;i<192*CHIPS_PER_UNIT;i++) {
 			PORTB |= (1<<5);			// Clock high
 			nop();
 			PORTB &= ~(1<<5);		// Clock low
 		}
-#endif 
-//~ #define DO_SOMETHING		
-#ifdef DO_SOMETHING
-		for (uint8_t i=0;i<72;i++) {
-			SPDR = 0;			// Send the byte
-			while(!(SPSR & (1<<SPIF))) 	// Wait for the transfer to finish
-				;				
-		}		
 #else		
-		// Do nothing
+		// Blank by sending zeroed out data
+		for (uint8_t i=0;i<24*CHIPS_PER_UNIT;i++) {
+			while(!(SPSR & (1<<SPIF))) {
+				// Wait for the previous transfer to finish
+			}
+			SPDR = 0;			// Send the byte
+		}		
 #endif		
-		// Leave the data line low
-		// doesn't work when SPI is enabled
-		//~ PORTB &= ~(1<<3);			// Data line low
-		
 		
 	}
 

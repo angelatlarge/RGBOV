@@ -8,6 +8,7 @@
 #define SPOKES_COUNT			1
 //~ #define VERTICAL_PIXELS			10
 
+
 #define PROGMEM_GRAPHIC
 #undef DRAW_INIT_HELLO
 #undef DRAW_WHEEL_SPEED
