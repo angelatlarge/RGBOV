@@ -1,0 +1,548 @@
+<html>
+<head>
+	<style type="text/css">
+		body 	{ font-family: Georgia; } 	
+		h1, h2, h3 		{ font-family: Arial; } 	
+		.quote	{ 
+			background: #E0E0E0; 
+			padding-top: 0.5em;
+			padding-bottom: 0.5em;
+		}
+		span.code {	font-family: Courier, "Courier New"; } 	
+		P.code 	{	font-family: Courier, "Courier New"; font-size:0.85em;} 	
+		col.centered { text-align:center; }
+		h1 { font-size: 20px; }
+		h2 { font-size: 18px; }
+		h3 { font-size: 16px; }
+		ul, ol  { padding-top: 0.25em; }
+		li { padding-top: 0.25em; padding-bottom: 0.25em; }
+		svg { padding-top: 1em; padding-bottom: 1em; }
+	</style>
+	<title>RGBOV design notes</title>
+<script type="text/x-mathjax-config">
+                MathJax.Hub.Config({"HTML-CSS": { preferredFont: "TeX", availableFonts: ["STIX","TeX"], linebreaks: { automatic:true }, EqnChunk: (MathJax.Hub.Browser.isMobile ? 10 : 50) },
+                                    tex2jax: { inlineMath: [ ["\\$", "\\$"] ], displayMath: [ ["$$","$$"], ["\\[", "\\]"] ], processEscapes: true, ignoreClass: "tex2jax_ignore|dno" },
+                                    TeX: {  noUndefined: { attributes: { mathcolor: "red", mathbackground: "#FFEEEE", mathsize: "90%" } } },
+                                    messageStyle: "none"
+                });
+ </script>
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>               
+</head>
+
+<script type="text/javascript">
+window.onload = function () {
+    var toc = "";
+    var level = 0;
+
+    document.getElementById("contents").innerHTML =
+    	document.getElementById("contents").innerHTML.replace(
+    		/<h([\d])>([^<]+)<\/h([\d])>/gi,
+    		function (str, openLevel, titleText, closeLevel) {
+    			if (openLevel != closeLevel) {
+    				return str;
+    			}
+
+    			if (openLevel > level) {
+    				toc += (new Array(openLevel - level + 1)).join("<ul>");
+    			} else if (openLevel < level) {
+    				toc += (new Array(level - openLevel + 1)).join("</ul>");
+    			}
+
+    			level = parseInt(openLevel);
+
+    			var anchor = titleText.replace(/ /g, "_");
+    			toc += "<li><a href=\"#" + anchor + "\">" + titleText
+    				+ "</a></li>";
+
+    			return "<h" + openLevel + "><a name=\"" + anchor + "\">"
+    				+ titleText + "</a></h" + closeLevel + ">";
+    		}
+    	);
+
+    if (level) {
+    	toc += (new Array(level + 1)).join("</ul>");
+    }
+
+    document.getElementById("toc").innerHTML += toc;
+};
+</script>               
+<body>
+<div id="toc">
+	<h1>Contents</h3>
+</div>
+
+<hr>
+
+<div id="contents">
+<h1>Timer Usage</h1>
+<ul>
+<li>Timer 0: wheel speed measurement timer
+<li>Timer 1: pixel/intensity timer
+<li>Timer 2: greyscale timer
+<li>
+</ul>
+
+<h1>Loading</h1>
+The problem: we have 120 LEDs that we need to load in (ideally) .746ms. 
+However nothing we have so far can do this fast enough.
+
+<H2>Why does the load need to happen quickly</H2>
+<p>We assume that bike's top speed is 30mph, which is 13411.2 mm/s. 
+The bike speed relative to ground is the same as ground speed relative to the bike, 
+and if we think about the latter, then it becomes clear that the 
+velocity of a point on the curcumpherence of the wheel is the same.
+This means that the tire moves past some fixed point on a bike at 13411.2 mm/s.
+
+<p>Assuming 10mm wide pixels (near the tire), a single pixel takes 0.746 ms to pass by. 
+We call this the pixel's <b>duration</b>. This tells us that the entire load must take 
+less than 0.746 ms.
+
+<h2>Parallel approach</h2>
+
+Here's how our existing loading function works: 
+to drive 120 RGB LEDs we have 24 TLC5940 LED drivers.
+We put these 24 drivers into 4 banks, 6 drivers per bank, and we put each bank on a separate port so 
+that the drivers can be loaded in parallel. 
+We'll ignore banks for the rest of this presentation and assume that there is only one bank.
+
+<ul>
+<li>When the graphic is loaded from PROGMEM, we prepare the pallete by taking the intensity specified 
+and translating it to logarithmic intensity using the formula \$Intensity_{out} = 2^{Intensity_{in}}\$
+<li>The load/send function is broken into two parts: the loading of the values into the drivers 
+and the latching of the values. Latching is uninteresting and will be ignored here. The loading function works as follows:
+
+<ul>
+<li>The first part of the loading function loads the data from PROGMEM and transforms it into array of intensities. 
+The data in PROGMEM is stored in the following format:
+
+<br>
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="700px" height="190px" viewBox="0 0 578.066 190" enable-background="new 0 0 578.066 190" xml:space="preserve">
+<g>
+	<text transform="matrix(1 0 0 1 102.665 18.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">pixel 0</tspan><tspan x="-0.671" y="14.4" font-family="'Arial'" font-size="12">palette</tspan><tspan x="3" y="28.8" font-family="'Arial'" font-size="12">index</tspan></text>
+	<rect x="93.009" y="0.5" fill="none" stroke="#000000" width="54" height="54"/>
+</g>
+<g>
+	<text transform="matrix(1 0 0 1 156.665 18.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">pixel 1</tspan><tspan x="-0.671" y="14.4" font-family="'Arial'" font-size="12">palette</tspan><tspan x="3" y="28.8" font-family="'Arial'" font-size="12">index</tspan></text>
+	<rect x="147.009" y="0.5" fill="none" stroke="#000000" width="54" height="54"/>
+</g>
+<g>
+	<text transform="matrix(1 0 0 1 210.665 18.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">pixel 2</tspan><tspan x="-0.671" y="14.4" font-family="'Arial'" font-size="12">palette</tspan><tspan x="3" y="28.8" font-family="'Arial'" font-size="12">index</tspan></text>
+	<rect x="201.009" y="0.5" fill="none" stroke="#000000" width="54" height="54"/>
+</g>
+<g>
+	<text transform="matrix(1 0 0 1 300.665 18.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">pixel n</tspan><tspan x="-0.671" y="14.4" font-family="'Arial'" font-size="12">palette</tspan><tspan x="3" y="28.8" font-family="'Arial'" font-size="12">index</tspan></text>
+	<rect x="291.009" y="0.5" fill="none" stroke="#000000" width="54" height="54"/>
+</g>
+<text transform="matrix(1 0 0 1 0 27.5)" font-family="'Arial'" font-size="12">Graphic</text>
+<text transform="matrix(1 0 0 1 2.3291 162.5)" font-family="'Arial'" font-size="12">Palette</text>
+<g>
+	<text transform="matrix(1 0 0 1 115.6758 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">R</tspan><tspan x="-17.678" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<text transform="matrix(1 0 0 1 133.6523 126.5)" font-family="'Arial'" font-size="12">Palette entry  0</text>
+	<rect x="93.009" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 169.3418 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">G</tspan><tspan x="-17.344" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="147.009" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 224.0068 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">B</tspan><tspan x="-18.009" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="201.009" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<rect x="93.009" y="108.5" fill="none" stroke="#000000" width="162" height="81"/>
+</g>
+<g>
+	<text transform="matrix(1 0 0 1 277.6758 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">R</tspan><tspan x="-17.678" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<text transform="matrix(1 0 0 1 295.6523 126.5)" font-family="'Arial'" font-size="12">Palette entry  1</text>
+	<rect x="255.009" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 331.3418 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">G</tspan><tspan x="-17.344" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="309.009" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 386.0068 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">B</tspan><tspan x="-18.009" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="363.009" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<rect x="255.009" y="108.5" fill="none" stroke="#000000" width="162" height="81"/>
+</g>
+<g>
+	<text transform="matrix(1 0 0 1 493.6758 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">R</tspan><tspan x="-17.678" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<text transform="matrix(1 0 0 1 511.6523 126.5)" font-family="'Arial'" font-size="12">Palette entry  n</text>
+	<rect x="471.009" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 547.3418 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">G</tspan><tspan x="-17.344" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="525.009" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 602.0068 162.5)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">B</tspan><tspan x="-18.009" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="579.009" y="135.5" fill="none" stroke="#8D8D8D" width="54" height="54"/>
+	<rect x="471.009" y="108.5" fill="none" stroke="#000000" width="162" height="81"/>
+</g>
+<text transform="matrix(1 0 0 1 268.0078 36.5)" font-family="'Arial'" font-size="12">...</text>
+<text transform="matrix(1 0 0 1 439.0078 162.5)" font-family="'Arial'" font-size="12">...</text>
+</svg>
+
+<p>The reason for this storage format in flash is memory minimization. 
+However, prior to loading it is convenient to have the data to be loaded as an array of intensities as follows:
+<br>
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="523px" height="73.796px" viewBox="0 0 523 73.796" enable-background="new 0 0 523 73.796" xml:space="preserve">
+<g>
+	<text transform="matrix(1 0 0 1 23.167 46.2959)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">R</tspan><tspan x="-17.678" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<text transform="matrix(1 0 0 1 63.4912 10.2959)" font-family="'Arial'" font-size="12">Pixel 0</text>
+	<rect x="0.5" y="19.296" fill="none" stroke="#000000" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 76.833 46.2959)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">G</tspan><tspan x="-17.344" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="54.5" y="19.296" fill="none" stroke="#000000" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 131.498 46.2959)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">B</tspan><tspan x="-18.009" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="108.5" y="19.296" fill="none" stroke="#000000" width="54" height="54"/>
+</g>
+<g>
+	<text transform="matrix(1 0 0 1 185.167 46.2959)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">R</tspan><tspan x="-17.678" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<text transform="matrix(1 0 0 1 225.4912 10.2959)" font-family="'Arial'" font-size="12">Pixel 1</text>
+	<rect x="162.5" y="19.296" fill="none" stroke="#000000" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 238.833 46.2959)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">G</tspan><tspan x="-17.344" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="216.5" y="19.296" fill="none" stroke="#000000" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 293.498 46.2959)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">B</tspan><tspan x="-18.009" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="270.5" y="19.296" fill="none" stroke="#000000" width="54" height="54"/>
+</g>
+<text transform="matrix(1 0 0 1 337.499 55.2959)" font-family="'Arial'" font-size="12">...</text>
+<g>
+	<text transform="matrix(1 0 0 1 383.167 46.2959)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">R</tspan><tspan x="-17.678" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<text transform="matrix(1 0 0 1 423.4912 10.2959)" font-family="'Arial'" font-size="12">Pixel n</text>
+	<rect x="360.5" y="19.296" fill="none" stroke="#000000" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 436.833 46.2959)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">G</tspan><tspan x="-17.344" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="414.5" y="19.296" fill="none" stroke="#000000" width="54" height="54"/>
+	<text transform="matrix(1 0 0 1 491.498 46.2959)"><tspan x="0" y="0" font-family="'Arial'" font-size="12">B</tspan><tspan x="-18.009" y="14.4" font-family="'Arial'" font-size="12">intensity</tspan></text>
+	<rect x="468.5" y="19.296" fill="none" stroke="#000000" width="54" height="54"/>
+</g>
+</svg>
+<p>This transformation is accomplished as follows. For every pixel:
+<ol>
+<li>Load its palette index from flash
+<li>In the output data structure insert the three intensity values from the palette
+</ol>
+<li>Then the values are loaded into the LED drivers as follows (pretending that there is only one bank/unit of drivers):
+<P>Architecturally we are bit-banging the output. However, rather than doing this serially, we 
+load the LED drivers in parallel: for each clock out we load 6 bits at the same time.
+<ul>
+<li>There is an outer loop that loops over the bytes to be loaded. Each R, G, and B intensity value is an 8-bit value, 
+and these values are loaded serially in the sense that first we load R intensity of pixel 1, then G intensity of pixel 1, and so on.
+Since we use 15 channels on each TLC5940, for each LED driver there are 15 bytes to be loaded. 
+Therefore the outer loop executes 15 times.
+<ul>
+<li>The inner loop works on bits for each individual LED driver. What we need to accomplish is to 
+set the six bits on the output port, then raise the clock line to load them in, and then move on to the next bit.
+<p>So here (for each driver) we:
+<ul>
+<li>Look up the bit in the graphic to be sent
+<li>Set/clear the bit on the port according to what it is in the graphic
+<li>After this is done we raise the clock line
+</ul>
+</ul>
+</ul>
+</ul>
+</ul>
+
+<P>The performance we are getting from this approach is 1.536ms/load, which is 206% of the ideal.
+
+<h2>Serial/SPI approach [CURRENTLY EMPLOYED]</h2>
+Instead of loading in parallel, we might consider off-loading the load to SPI facilities on the AVR chip.
+This will make it impossible to load in parallel, however, it will also make it unnecessary to bitbang, 
+and while the data is being loaded by the SPI facilities, we can load more data.
+
+<P>Maximum SPI speed is clock/2, therefore to load 360 bytes (120 LEDs * 3 channels/LED = 320 channels) 
+at 8 bits/byte we will need \$120\,LEDs * 3\,channel/LED * 8\,bits/byte * 2\,clocks/bit = 5760\,clocks\$, 
+in the ideal case. At 20Mhz this will take 288\$\mu\$s. 
+However, if everything is hooked up serially, we will have to send 12 bits instead of 8 because 
+the values do not appear on the other side of a LED driver until 12 bits are sent. 
+At 12 bits/chan the load takes \$120\,LEDs * 3\,channel/LED * 12\,bits/byte * 2\,clocks/bit\$ = 8640 clocks, 
+which adds up to 432\$\mu\$s at 20Mhz.
+<P>In the ideal scenario the data preparation proceeds as the bits are being sent as follows:
+<ol>
+<li>Write to SPDR initiating data transfer (16 clocks)
+<li>If finished with a pixel:
+<ol>
+	<li>Load the next palette index from PROGMEM (5-10 clocks)
+</ol>
+<li>Load the intensity value for the current channel a register(6 clocks?)
+<li>Go back to step 1: write to SPDR
+</ol>
+This ideal performance is not achievable because ATV SPI facilities are only equipped to handle 8-bit sends.
+For 12-bit values we'll have to pad even and odd nibbles. The send code looks as follows:
+<li>Write to SPDR initiating data transfer (16 clocks)
+<li>If finished with a pixel:
+<ol>
+	<li>Load the next palette index from PROGMEM (5-10 clocks)
+</ol>
+<li>Load the intensity value for the current channel a register(6 clocks?)
+<li>What is loaded depends on the state of communication. 
+There are three possible consents that need to be loaded into the SPDR register
+<ul>
+<li>Pure intensity data
+<li>4 bits of padding + high 4 bits of intensity data
+<li>low 4 bits of (previous) intensity data + 4 bits of padding for the next intensity data
+</ul>
+This can be illustrated as follows:
+<br>
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="569px" height="150px" viewBox="0 0 569 150" enable-background="new 0 0 569 150" xml:space="preserve">
+<g>
+	<g>
+		<rect x="0.658" y="73.454" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 5.9717 86.9072)" font-family="'Arial'" font-size="12.8995">7</text>
+	</g>
+	<g>
+		<rect x="18.579" y="73.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 23.8926 86.7495)" font-family="'Arial'" font-size="12.8995">6</text>
+	</g>
+	<g>
+		<rect x="36.579" y="73.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 41.8926 86.7495)" font-family="'Arial'" font-size="12.8995">5</text>
+	</g>
+	<g>
+		<rect x="54.579" y="73.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 59.8926 86.7495)" font-family="'Arial'" font-size="12.8995">4</text>
+	</g>
+	<g>
+		<rect x="72.5" y="73.375" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 77.814 86.8281)" font-family="'Arial'" font-size="12.8995">3</text>
+	</g>
+	<g>
+		<rect x="90.421" y="73.217" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 95.7349 86.6704)" font-family="'Arial'" font-size="12.8995">2</text>
+	</g>
+	<g>
+		<rect x="108.421" y="73.217" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 113.7349 86.6704)" font-family="'Arial'" font-size="12.8995">1</text>
+	</g>
+	<g>
+		<rect x="126.421" y="73.217" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 131.7349 86.6704)" font-family="'Arial'" font-size="12.8995">0</text>
+	</g>
+	<rect x="0.5" y="73.296" fill="none" stroke="#000000" width="144" height="18"/>
+</g>
+<text transform="matrix(1 0 0 1 37.8184 127.2959)" font-family="'Arial'" font-size="12">SPDR byte 0</text>
+<g>
+	<g>
+		<rect x="144.658" y="73.454" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 149.9717 86.9072)" font-family="'Arial'" font-size="12.8995">7</text>
+	</g>
+	<g>
+		<rect x="162.579" y="73.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 167.8926 86.7495)" font-family="'Arial'" font-size="12.8995">6</text>
+	</g>
+	<g>
+		<rect x="180.579" y="73.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 185.8926 86.7495)" font-family="'Arial'" font-size="12.8995">5</text>
+	</g>
+	<g>
+		<rect x="198.579" y="73.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 203.8926 86.7495)" font-family="'Arial'" font-size="12.8995">4</text>
+	</g>
+	<g>
+		<rect x="216.5" y="73.375" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 221.814 86.8281)" font-family="'Arial'" font-size="12.8995">3</text>
+	</g>
+	<g>
+		<rect x="234.421" y="73.217" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 239.7349 86.6704)" font-family="'Arial'" font-size="12.8995">2</text>
+	</g>
+	<g>
+		<rect x="252.421" y="73.217" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 257.7349 86.6704)" font-family="'Arial'" font-size="12.8995">1</text>
+	</g>
+	<g>
+		<rect x="270.421" y="73.217" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 275.7349 86.6704)" font-family="'Arial'" font-size="12.8995">0</text>
+	</g>
+	<rect x="144.5" y="73.296" fill="none" stroke="#000000" width="144" height="18"/>
+</g>
+<text transform="matrix(1 0 0 1 181.8184 127.2959)" font-family="'Arial'" font-size="12">SPDR byte 1</text>
+<g>
+	<g>
+		<rect x="288.658" y="73.533" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 293.9717 86.9863)" font-family="'Arial'" font-size="12.8995">7</text>
+	</g>
+	<g>
+		<rect x="306.578" y="73.375" fill="#FFFFFF" stroke="#C2C2C2" width="17.922" height="17.921"/>
+		<text transform="matrix(1 0 0 1 311.8926 86.8286)" font-family="'Arial'" font-size="12.8995">6</text>
+	</g>
+	<g>
+		<rect x="324.578" y="73.375" fill="#FFFFFF" stroke="#C2C2C2" width="17.922" height="17.921"/>
+		<text transform="matrix(1 0 0 1 329.8926 86.8286)" font-family="'Arial'" font-size="12.8995">5</text>
+	</g>
+	<g>
+		<rect x="342.578" y="73.375" fill="#FFFFFF" stroke="#C2C2C2" width="17.922" height="17.921"/>
+		<text transform="matrix(1 0 0 1 347.8926 86.8286)" font-family="'Arial'" font-size="12.8995">4</text>
+	</g>
+	<g>
+		<rect x="360.5" y="73.454" fill="#FFFFFF" stroke="#C2C2C2" width="17.922" height="17.921"/>
+		<text transform="matrix(1 0 0 1 365.8135 86.9072)" font-family="'Arial'" font-size="12.8995">3</text>
+	</g>
+	<g>
+		<rect x="378.421" y="73.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 383.7344 86.7495)" font-family="'Arial'" font-size="12.8995">2</text>
+	</g>
+	<g>
+		<rect x="396.421" y="73.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 401.7344 86.7495)" font-family="'Arial'" font-size="12.8995">1</text>
+	</g>
+	<g>
+		<rect x="414.421" y="73.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+		<text transform="matrix(1 0 0 1 419.7344 86.7495)" font-family="'Arial'" font-size="12.8995">0</text>
+	</g>
+	<rect x="288.5" y="73.375" fill="none" stroke="#000000" width="144" height="18"/>
+</g>
+<text transform="matrix(1 0 0 1 325.8184 127.2959)" font-family="'Arial'" font-size="12">SPDR byte 2</text>
+<path fill="none" stroke="#000000" d="M0.582,91.203C0.5,109.296,72.5,91.296,72.5,109.296c0-18,72,0,72-18"/>
+<path fill="none" stroke="#000000" d="M144.5,91.296c-0.082,18.093,71.918,0.093,71.918,18.093c0-18,72,0,72-18"/>
+<path fill="none" stroke="#000000" d="M288.582,91.203c-0.082,18.093,71.918,0.093,71.918,18.093c0-18,72,0,72-18"/>
+<g>
+	<text transform="matrix(1 0 0 1 65.1406 10.2959)" font-family="'Arial'" font-size="12">Intensity value 0</text>
+	<text transform="matrix(1 0 0 1 15.1455 46.2959)" font-family="'Arial'" font-size="12">padding</text>
+	<g>
+		<g>
+			<rect x="0.5" y="55.375" fill="#E6E6E6" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 5.814 68.8281)" font-family="'Arial'" font-size="12.8995">0</text>
+		</g>
+		<g>
+			<rect x="18.579" y="55.375" fill="#E6E6E6" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 23.8926 68.8281)" font-family="'Arial'" font-size="12.8995">0</text>
+		</g>
+		<g>
+			<rect x="36.5" y="55.296" fill="#E6E6E6" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 41.814 68.7495)" font-family="'Arial'" font-size="12.8995">0</text>
+		</g>
+		<g>
+			<rect x="54.579" y="55.296" fill="#E6E6E6" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 59.8926 68.7495)" font-family="'Arial'" font-size="12.8995">0</text>
+		</g>
+	</g>
+	<text transform="matrix(1 0 0 1 132.8223 46.2959)" font-family="'Arial'" font-size="12">data</text>
+	<g>
+		<g>
+			<rect x="72.5" y="55.375" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 78.1758 68.8281)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+		<g>
+			<rect x="90.579" y="55.375" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 96.2544 68.8281)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+		<g>
+			<rect x="108.5" y="55.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 114.1758 68.7495)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+		<g>
+			<rect x="126.579" y="55.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 132.2544 68.7495)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+		<g>
+			<rect x="144.5" y="55.375" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 150.1758 68.8281)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+		<g>
+			<rect x="162.579" y="55.375" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 168.2544 68.8281)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+		<g>
+			<rect x="180.5" y="55.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 186.1758 68.7495)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+		<g>
+			<rect x="198.579" y="55.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 204.2544 68.7495)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+	</g>
+	<path fill="none" stroke="#000000" d="M0.5,73.296c0,0,0-9,0-27c0-16.552,9-18,18-18c81,0,90-2.035,90-9c0,6.965,9,9,90,9
+		c9,0,18,1.448,18,18c0,18,0,27,0,27"/>
+</g>
+<g>
+	<text transform="matrix(1 0 0 1 281.1406 10.2959)" font-family="'Arial'" font-size="12">Intensity value 1</text>
+	<text transform="matrix(1 0 0 1 231.1455 46.2959)" font-family="'Arial'" font-size="12">padding</text>
+	<g>
+		<g>
+			<rect x="216.5" y="55.375" fill="#E6E6E6" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 221.814 68.8281)" font-family="'Arial'" font-size="12.8995">0</text>
+		</g>
+		<g>
+			<rect x="234.579" y="55.375" fill="#E6E6E6" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 239.8926 68.8281)" font-family="'Arial'" font-size="12.8995">0</text>
+		</g>
+		<g>
+			<rect x="252.5" y="55.296" fill="#E6E6E6" stroke="#C2C2C2" width="17.922" height="17.921"/>
+			<text transform="matrix(1 0 0 1 257.814 68.7495)" font-family="'Arial'" font-size="12.8995">0</text>
+		</g>
+		<g>
+			<rect x="270.578" y="55.296" fill="#E6E6E6" stroke="#C2C2C2" width="17.922" height="17.921"/>
+			<text transform="matrix(1 0 0 1 275.8926 68.7495)" font-family="'Arial'" font-size="12.8995">0</text>
+		</g>
+	</g>
+	<text transform="matrix(1 0 0 1 348.8223 46.2959)" font-family="'Arial'" font-size="12">data</text>
+	<g>
+		<g>
+			<rect x="288.5" y="55.375" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 294.1758 68.8281)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+		<g>
+			<rect x="306.579" y="55.375" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 312.2539 68.8281)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+		<g>
+			<rect x="324.5" y="55.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 330.1758 68.7495)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+		<g>
+			<rect x="342.579" y="55.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 348.2539 68.7495)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+		<g>
+			<rect x="360.5" y="55.375" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 366.1758 68.8281)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+		<g>
+			<rect x="378.579" y="55.375" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 384.2539 68.8281)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+		<g>
+			<rect x="396.5" y="55.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 402.1758 68.7495)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+		<g>
+			<rect x="414.579" y="55.296" fill="#FFFFFF" stroke="#C2C2C2" width="17.921" height="17.921"/>
+			<text transform="matrix(1 0 0 1 420.2539 68.7495)" font-family="'Arial'" font-size="12.8995">x</text>
+		</g>
+	</g>
+	<path fill="none" stroke="#000000" d="M216.5,73.296c0,0,0-9,0-27c0-16.552,9-18,18-18c81,0,90-2.035,90-9c0,6.965,9,9,90,9
+		c9,0,18,1.448,18,18c0,18,0,27,0,27"/>
+</g>
+</svg>
+
+</ul>
+
+<h3>Padding and 8-bit data</h3>
+<table>
+<tr>
+	<th>Data</th>
+	<th>SndTp</th>
+	<th>Description</th>
+	<th>Bits sent</th>
+	<th>Nx Send Tp</th>
+</tr>
+<tr><td>0x00</td><td>0</td><td>padding + channel 15 data			</td><td>  8</td><td>1</td></tr>
+<tr><td>0x00</td><td>1</td><td>channel 15 data + chan 14 padding 	</td><td> 16</td><td>2</td></tr>
+<tr><td>    </td><td>2</td><td>channel 14 data (all)				</td><td> 24</td><td>0</td></tr>
+<tr><td>    </td><td>0</td><td>padding + chan 13 data 				</td><td> 32</td><td>1</td></tr>
+<tr><td>    </td><td>1</td><td>channel 13 data + chan 12 padding	</td><td> 40</td><td>2</td></tr>
+<tr><td>    </td><td>2</td><td>channel 12 data	(all)				</td><td> 48</td><td>0</td></tr>
+<tr><td>    </td><td>0</td><td>padding + chan 11 data				</td><td> 56</td><td>1</td></tr>
+<tr><td>    </td><td>1</td><td>channel 11 data + channel 10 padding	</td><td> 64</td><td>2</td></tr>
+<tr><td>    </td><td>2</td><td>channel 10 data (all)				</td><td> 72</td><td>0</td></tr>
+<tr><td>    </td><td>0</td><td>padding + channel 9 data				</td><td> 80</td><td>1</td></tr>
+<tr><td>    </td><td>1</td><td>channel 9 data + channel 8 padding   </td><td> 88</td><td>2</td></tr>
+<tr><td>    </td><td>2</td><td>channel 8 data (all) 				</td><td> 96</td><td>0</td></tr>
+<tr><td>    </td><td>0</td><td>padding + channel 7 data				</td><td>104</td><td>1</td></tr>
+<tr><td>    </td><td>1</td><td>channel 7 data + channel 6 padding	</td><td>112</td><td>2</td></tr>
+<tr><td>    </td><td>2</td><td>channel 6 data (all)					</td><td>120</td><td>0</td></tr>
+<tr><td>    </td><td>0</td><td>padding + channel 5 data				</td><td>128</td><td>1</td></tr>
+<tr><td>    </td><td>1</td><td>channel 5 data + channel 4 padding	</td><td>134</td><td>2</td></tr>
+<tr><td>    </td><td>2</td><td>channel 4 data (all)					</td><td>144</td><td>0</td></tr>
+<tr><td>    </td><td>0</td><td>padding + channel 3 data				</td><td>152</td><td>1</td></tr>
+<tr><td>    </td><td>1</td><td>channel 3 data + channel 2 padding	</td><td>160</td><td>2</td></tr>
+<tr><td>    </td><td>2</td><td>channel 2 data (all)					</td><td>168</td><td>0</td></tr>
+<tr><td>    </td><td>0</td><td>padding + channel 1 data				</td><td>176</td><td>1</td></tr>
+<tr><td>    </td><td>1</td><td>channel 1 data + channel 0 padding	</td><td>184</td><td>2</td></tr>
+<tr><td>    </td><td>2</td><td>channel 0 data (all)					</td><td>192</td><td>0</td></tr>
+</table>
+
+
+</div>
+</body>
+</html>

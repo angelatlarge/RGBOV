@@ -634,16 +634,15 @@ int main() {
 		;
 	OCR1A = 1;
 
+	loadingInitDisplay();
 
 	sei();									// Enable interrupts
 	
 
-	loadingInitDisplay();
-
 	for (;;) {
 		loadingPrepareUpdate(0);
 		loadingUpdateDisplay(0);
-		_delay_ms(500);
+		//~ _delay_ms(500);
 	}
 
 	//~ uint8_t anData[4] = {0x00, 0x00, 0x00, 0x00};
