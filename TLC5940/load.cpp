@@ -111,12 +111,12 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 			const uint8_t * ptrGraphicLastPlusOne = ptrGraphicFirst + GRAPHIC_HEIGHT;
 			const uint8_t * ptrGraphic = ptrGraphicFirst + VERTICAL_PIXELS; // Note: we'll use PRE-INCREMENT EVERYWHERE
 			
-			VOLREG uint8_t idxChannel = 0;
+			VOLREG uint8_t idxChannel = 2;	// We want to walk the channels in reverse
 			VOLREG uint8_t nPaletteIndex = 0;
 			if (--ptrGraphic<ptrGraphicLastPlusOne) {
 				nPaletteIndex = pgm_read_byte(ptrGraphic);
 			} 
-			VOLREG uint8_t dataByte = palette[nPaletteIndex*3+idxChannel++];
+			VOLREG uint8_t dataByte = palette[nPaletteIndex*3+idxChannel--];
 			//~ VOLREG uint8_t dataByte = (idxChannel++>=1)?0xFF:0x00;
 			
 			VOLREG uint8_t toSPDR = dataByte;
@@ -149,7 +149,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 												// so the first byte will actually be
 												// idxNextSendType = 2
 					nBitsSent += 16;
-					idxChannel = 0;
+					idxChannel = 2;
 				}
 				
 				// Update the send type
@@ -162,7 +162,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 					toSPDR = dataByte<<4;
 				} else {
 					// Either way we need another new data in dataByte
-					if (idxChannel==0) {
+					if (idxChannel==2) {
 						// Load next palette index
 						if (--ptrGraphic < ptrGraphicFirst)
 							break;
@@ -173,7 +173,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 					
 					dataByte = palette[nPaletteIndex*3+idxChannel];
 					//~ dataByte = (idxChannel>=1)?0xFF:0x00;
-					if (++idxChannel>2) idxChannel = 0;
+					if (idxChannel--==0) idxChannel = 2;
 					//~ This fails: ++idxChannel %= 3;
 					
 					if (idxNextSendType) {
