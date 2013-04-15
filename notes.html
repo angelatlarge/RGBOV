@@ -26,11 +26,10 @@
                                     messageStyle: "none"
                 });
  </script>
-<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>               
-</head>
 
 <script type="text/javascript">
-window.onload = function () {
+
+function createTOC() {
     var toc = "";
     var level = 0;
 
@@ -65,7 +64,36 @@ window.onload = function () {
 
     document.getElementById("toc").innerHTML += toc;
 };
-</script>               
+
+
+function addLoadEvent(func) {
+  var oldonload = window.onload;
+  if (typeof window.onload != 'function') {
+    window.onload = func;
+  } else {
+    window.onload = function() {
+      if (oldonload) {
+        oldonload();
+      }
+      func();
+    }
+  }
+}
+ 
+addLoadEvent(createTOC);
+addLoadEvent(function () {
+  var script = document.createElement("script");
+  script.type = "text/javascript";
+  script.src  = "http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML";
+  document.getElementsByTagName("head")[0].appendChild(script);
+});
+
+
+
+</script>    
+
+
+</head>
 <body>
 <div id="toc">
 	<h1>Contents</h3>
@@ -79,7 +107,6 @@ window.onload = function () {
 <li>Timer 0: wheel speed measurement timer
 <li>Timer 1: pixel/intensity timer
 <li>Timer 2: greyscale timer
-<li>
 </ul>
 
 <h1>Loading</h1>
@@ -1084,6 +1111,17 @@ This can be illustrated as follows:
 <text transform="matrix(1 0 0 1 279 578)" font-family="'Arial'" font-size="12">to IC2</text>
 </svg>
 
+<h1>Banking TLC5490s using analog switches</h1>
+
+<ul>
+<li>ADG619/ADG620 has \$t_{on}\$ time of 120ns max, which translates into 2.5 AVR clock cycles. 
+The \$t_{off}\$ is less than that, being 90ns maximum. These switches have 6.5\$\Omega\$ on resistance, 
+and I have a bunch of them.
+</ul>
+
 </div>
+
+
+          
 </body>
 </html>
