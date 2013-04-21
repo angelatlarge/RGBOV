@@ -83,9 +83,6 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 		
 		if ( (idxHorizontalPixel<HORZ_PIXELS) && (idxHorizontalPixel<GRAPHIC_WIDTH)) {
 
-			uint16_t nBitsSent = 0;
-		
-			
 			
 			/* 	Padding: we need to pre-pad
 				We will send 15 12-bit values (180 bits) which is 22.5 8-bit SPI 8-bit bytes
@@ -103,7 +100,8 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 			}
 			SPDR = 0;					// Last 4 bits of the empty 12-bit data
 										// plus the empty 4 high bits of the first intensity data
-			nBitsSent += 16;
+			uint8_t nBytesSent = 2;	// Initialize to two to account for 
+										// the two blanking bytes we just sent
 			VOLREG uint8_t idxNextSendType = 2;	// The next send type is type 2
 												// so we indicate that
 			
@@ -129,13 +127,13 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 					// Wait for the previous transfer to finish
 				}
 				SPDR = toSPDR;			// Send the byte
-				nBitsSent += 8;
+				nBytesSent++;
 				
 				// Check for LED driver edge
-				if (nBitsSent % 192 == 0) {
+				if (nBytesSent % 24 == 0) {
 					// Send fake (zero-ed out) data for channel 16, which we do not use
 					
-					if (nBitsSent == 192 * CHIPS_PER_UNIT)
+					if (nBytesSent == 24 * CHIPS_PER_UNIT)
 						break;
 					
 					while(!(SPSR & (1<<SPIF))) {
@@ -150,7 +148,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 					idxNextSendType = 1;		// It will get incremented first
 												// so the first byte will actually be
 												// idxNextSendType = 2
-					nBitsSent += 16;
+					nBytesSent += 2;
 					idxChannel = 2;
 				}
 				
