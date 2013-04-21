@@ -2,6 +2,7 @@
 #include "../shared/load.h"
 #include "../shared/settings.h"
 #include "strfmt.h"
+#include "util/delay.h"
 
 
 
@@ -78,11 +79,12 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 
 	uint8_t idxUnit = 0;
 	
-	if ( (idxHorizontalPixel<HORZ_PIXELS) && (idxHorizontalPixel<GRAPHIC_WIDTH)) {
-
-		uint32_t nBitsSent = 0;
+	do { // This is the unit loop
 		
-		do { // This is the unit loop
+		if ( (idxHorizontalPixel<HORZ_PIXELS) && (idxHorizontalPixel<GRAPHIC_WIDTH)) {
+
+			uint32_t nBitsSent = 0;
+		
 			
 			
 			/* 	Padding: we need to pre-pad
@@ -189,31 +191,30 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 				
 			} // End of send bytes loop
 			
-			
-		} while (++idxUnit < SIDES_COUNT*SPOKES_COUNT);	// 	End of the unit loop,
-		
-	} else {
-		// We are past the end of the graphic, Send black
+		} else {
+			// We are past the end of the graphic, Send black
 #ifdef BLANK_MANUALLY
-		// Manual blanking by twiddling the clock bit
-		SPCR &= ~(1<<SPE)		// Disable SPI
-		PORTB &= ~(1<<3);			// Data line low
-		for (uint16_t i=0;i<192*CHIPS_PER_UNIT;i++) {
-			PORTB |= (1<<5);			// Clock high
-			nop();
-			PORTB &= ~(1<<5);		// Clock low
-		}
-#else		
-		// Blank by sending zeroed out data
-		for (uint8_t i=0;i<24*CHIPS_PER_UNIT;i++) {
-			while(!(SPSR & (1<<SPIF))) {
-				// Wait for the previous transfer to finish
+			// Manual blanking by twiddling the clock bit
+			SPCR &= ~(1<<SPE)		// Disable SPI
+			PORTB &= ~(1<<3);			// Data line low
+			for (uint16_t i=0;i<192*CHIPS_PER_UNIT;i++) {
+				PORTB |= (1<<5);			// Clock high
+				nop();
+				PORTB &= ~(1<<5);		// Clock low
 			}
-			SPDR = 0;			// Send the byte
-		}		
+#else		
+			// Blank by sending zeroed out data
+			for (uint8_t i=0;i<24*CHIPS_PER_UNIT;i++) {
+				while(!(SPSR & (1<<SPIF))) {
+					// Wait for the previous transfer to finish
+				}
+				SPDR = 0;			// Send the byte
+			}		
 #endif		
+		}
 		
-	}
+	} while (++idxUnit < SIDES_COUNT*SPOKES_COUNT);	// 	End of the unit loop,
+	
 
 	
 }
