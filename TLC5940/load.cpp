@@ -83,7 +83,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 		
 		if ( (idxHorizontalPixel<HORZ_PIXELS) && (idxHorizontalPixel<GRAPHIC_WIDTH)) {
 
-			uint32_t nBitsSent = 0;
+			uint16_t nBitsSent = 0;
 		
 			
 			
