@@ -288,11 +288,9 @@ void loadingInitDisplay() {
 		|(0<<CPOL)			// Bit 3 – CPOL: Clock Polarity
 							// When CPOL is written to zero, SCK is low when idle.
 		|(0<<CPHA)			// Bit 2 – CPHA: Clock Phase
-		//~ |(0<<SPR1)|(0<<SPR0)// Clock: Fosc/4
+		|(0<<SPR1)|(0<<SPR0)// Clock: Fosc/4 [ SPR1=0, SPR0:0 ]
 		//~ |(1<<SPR1)|(1<<SPR0)// Clock: Focs/128
 		//~ |(1<<SPR1)|(0<<SPR0)// Clock: Focs/64
-		//~ |(1<<SPR1)|(0<<SPR0)// Clock: Focs/64
-		|(1<<SPR1)|(1<<SPR0)// 
 		;
 	SPSR = 0
 		//~ |(0<<SPI2X)			// Bit 0 – SPI2X: Double SPI Speed Bit
