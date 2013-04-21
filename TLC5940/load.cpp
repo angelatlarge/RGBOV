@@ -120,7 +120,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 			//~ VOLREG uint8_t dataByte = (idxChannel++>=1)?0xFF:0x00;
 			
 			VOLREG uint8_t toSPDR = dataByte;
-			VOLREG uint8_t nPixelsSent = 0;
+			uint8_t nChipsSent = 0;
 			
 			for (;;) { // Send bytes loop
 				while(!(SPSR & (1<<SPIF))) {
@@ -130,10 +130,11 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 				nBytesSent++;
 				
 				// Check for LED driver edge
-				if (nBytesSent % 24 == 0) {
+				if (nBytesSent == 24) {
 					// Send fake (zero-ed out) data for channel 16, which we do not use
+					nBytesSent = 0;
 					
-					if (nBytesSent == 24 * CHIPS_PER_UNIT)
+					if (++nChipsSent == CHIPS_PER_UNIT) 
 						break;
 					
 					while(!(SPSR & (1<<SPIF))) {
@@ -168,7 +169,6 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 							break;
 						if (ptrGraphic<ptrGraphicLastPlusOne)
 							nPaletteIndex = pgm_read_byte(ptrGraphic);
-						nPixelsSent++;
 					}
 					
 					dataByte = palette[nPaletteIndex*3+idxChannel];
