@@ -116,7 +116,10 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 			if (--ptrGraphic<ptrGraphicLastPlusOne) {
 				nPaletteIndex = pgm_read_byte(ptrGraphic);
 			} 
-			VOLREG uint8_t dataByte = palette[nPaletteIndex*3+idxChannel--];
+			//~ uint8_t * ptrDataSrc = palette + nPaletteIndex*3+idxChannel--;
+			uint8_t * ptrDataSrc = &palette[nPaletteIndex*3+idxChannel--];
+			VOLREG uint8_t dataByte = *ptrDataSrc;
+			ptrDataSrc--;
 			//~ VOLREG uint8_t dataByte = (idxChannel++>=1)?0xFF:0x00;
 			
 			VOLREG uint8_t toSPDR = dataByte;
@@ -170,11 +173,15 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 						if (--ptrGraphic < ptrGraphicFirst)
 							break;
 						*/
-						if (--ptrGraphic<ptrGraphicLastPlusOne)
+						if (--ptrGraphic<ptrGraphicLastPlusOne) {
 							nPaletteIndex = pgm_read_byte(ptrGraphic);
+							//~ ptrDataSrc = palette + nPaletteIndex*3+2;
+							ptrDataSrc = &palette[nPaletteIndex*3+2];
+						}
 					}
 					
-					dataByte = palette[nPaletteIndex*3+idxChannel];
+					dataByte = *ptrDataSrc;
+					ptrDataSrc--;
 					//~ dataByte = (idxChannel>=1)?0xFF:0x00;
 					if (idxChannel--==0) idxChannel = 2;
 					//~ This fails: ++idxChannel %= 3;
