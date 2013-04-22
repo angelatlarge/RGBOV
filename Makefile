@@ -1,7 +1,7 @@
 
 .PHONY: all TLC5940 74HC595 clean
 
-all: TLC5490 74HC595
+all: TLC5940 74HC595
 
 74HC595:
 	echo Building 74HC595

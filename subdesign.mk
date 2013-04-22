@@ -183,9 +183,10 @@ OBJDIR=obj
 HEXFORMAT=ihex
 
 # compiler
+# compiler
 CONLYFLAGS= \
 	-Wstrict-prototypes						\
-	-Wa,-ahlms=$(OBJDIR)/$(notdir $(firstword $(filter %.lst, $(<:.c=.lst))))
+	-Wa,-ahlms=$(OBJDIR)/$(notdir $(firstword $(filter %.lst.gcc, $(<:.c=.lst.gcc))))
 
 CALLFLAGS=\
 	-I. $(INC) -g -mmcu=$(MCU) -O$(OPTLEVEL) \
@@ -202,7 +203,7 @@ CALLFLAGS=\
 # c++ specific flags
 CPPFLAGS=	\
 	-fno-exceptions               \
-	-Wa,-ahlms=$(OBJDIR)/$(notdir $(firstword $(filter %.lst, $(<:.cpp=.lst)) $(filter %.lst, $(<:.cc=.lst)) $(filter %.lst, $(<:.C=.lst))))	\
+	-Wa,-ahlms=$(OBJDIR)/$(notdir $(firstword $(filter %.lst.gcc, $(<:.cpp=.lst.gcc)) $(filter %.lst.gcc, $(<:.cc=.lst.gcc)) $(filter %.lst.gcc, $(<:.C=.lst.gcc))))	\
 	-Wno-uninitialized
 
 # assembler
@@ -344,7 +345,7 @@ GENASMFILES=$(filter %.s, $(OBJDEPS:.o=.s))
 
 # Make targets:
 # all, disasm, stats, hex, writeflash/install, clean
-all: $(TRG) symbols
+all: $(TRG) $(DUMPTRG) symbols
 
 disasm: $(DUMPTRG) stats
 
