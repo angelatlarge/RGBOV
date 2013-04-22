@@ -37,9 +37,7 @@
 									Can saves about 51.2us of the loading time
 									*/
 
-#define LEDS_PER_CHIP		5
 #define CHIPS_PER_UNIT		6
-#define LINES_PER_CHIP		(LEDS_PER_CHIP*3)
 
 /*
 	Unit = circuit (LED drivers) for one spoke, one side.
@@ -73,6 +71,58 @@
 static uint8_t useHeight = (VERTICAL_PIXELS<GRAPHIC_HEIGHT) ? VERTICAL_PIXELS : GRAPHIC_HEIGHT;
 #define VOLREG
 
+#define getNextPixel	\
+	if (--ptrGraphic<ptrGraphicLastPlusOne) {			\
+		nPaletteIndex = pgm_read_byte(ptrGraphic);		\
+	}													\
+	ptrDataSrc = &palette[nPaletteIndex*3+2];			\
+	dataByte = *ptrDataSrc;								\
+	ptrDataSrc--;										
+
+#define getNextChannel				\
+	dataByte = *ptrDataSrc;			\
+	ptrDataSrc--;					
+
+#define waitSPIfinish 						\
+	loop_until_bit_is_set(SPSR, SPIF)
+	
+//~ #define waitSPIfinish 						\
+		//~ while(!(SPSR & (1<<SPIF))) 			\
+			//~ ;
+
+//~ #define waitSPIfinish 						\
+	//~ __asm__(								\
+	//~ "  ldi  r16, 3\n\t"						\
+	//~ "  ldi  r16, 3\n\t"						\
+//~ ); 
+
+//~ #define spiSendPaddingPlusHighNibble			\
+	//~ SPDR = (uint8_t)dataByte>>(uint8_t)4;							
+	
+#define __spiSendPaddingPlusHighNibbleA(val)			\
+	asm volatile (									\
+		"swap %0 " "\n\t"					\
+		"andi %0, 0x0F" "\n\t"				\
+		"out 0x2e, %0" "\n\t"				\
+		: "=a" ((uint8_t)(val))				\
+		: "0" ((uint8_t)(val))				\
+	)	
+
+#define __spiSendPaddingPlusHighNibbleB(val)			\
+	asm volatile (									\
+		"lsr %0 " "\n\t"					\
+		"lsr %0 " "\n\t"					\
+		"lsr %0 " "\n\t"					\
+		"lsr %0 " "\n\t"					\
+		"out 0x2e, %0" "\n\t"				\
+		: 									\
+		: "r" ((uint8_t)(val))				\
+	)	
+		//~ "cbr __tmp_reg__, 0xF0" "\n\t"				\
+
+#define spiSendPaddingPlusHighNibble				\
+	__spiSendPaddingPlusHighNibbleB(dataByte);
+
 void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 	
 	TLC5940_XLAT_PORT &= ~(1<<TLC5940_XLAT_BIT);		// XLAT -> low
@@ -83,121 +133,145 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 		
 		if ( (idxHorizontalPixel<HORZ_PIXELS) && (idxHorizontalPixel<GRAPHIC_WIDTH)) {
 
-			
-			/* 	Padding: we need to pre-pad
-				We will send 15 12-bit values (180 bits) which is 22.5 8-bit SPI 8-bit bytes
-				For every TLC5490 we actually need to send 16 12-bit values (192 bits in total)
-				because that's what the TLC5490 serial comms expect. 
-				Since we are using only 15 of the output lines, 
-				the 16th value is unnecessary (we are not using OUT15)
-				We also need to pad for the extra nibble (22.5 SPI above) 
-				So if we start by sending the empty 12-bit value, we are OK
-				This padding needs to be done for every chip
-			*/
-			SPDR = 0;					// First 8 bits of the empty 12-bit data
-			while(!(SPSR & (1<<SPIF))) {
-				// Wait for the transfer to finish
-			}
-			SPDR = 0;					// Last 4 bits of the empty 12-bit data
-										// plus the empty 4 high bits of the first intensity data
-			uint8_t nBytesSent = 2;	// Initialize to two to account for 
-										// the two blanking bytes we just sent
-			VOLREG uint8_t idxNextSendType = 2;	// The next send type is type 2
-												// so we indicate that
-			
 			// Different curColDatas are not implemented yet
 			//~ uint8_t * curColData = nColumnData[idxUnit];
 			const uint8_t * ptrGraphicFirst = &(graphic[idxHorizontalPixel][0]);
 			const uint8_t * ptrGraphicLastPlusOne = ptrGraphicFirst + GRAPHIC_HEIGHT;
-			const uint8_t * ptrGraphic = ptrGraphicFirst + VERTICAL_PIXELS; // Note: we'll use PRE-INCREMENT EVERYWHERE
+			const uint8_t * ptrGraphic = ptrGraphicFirst + VERTICAL_PIXELS; // Note: we'll use PRE-DECREMENT EVERYWHERE
 			
-			VOLREG uint8_t idxChannel = 2;	// We want to walk the channels in reverse
+			//~ volatile register uint8_t dataByte asm("r7");
+			uint8_t dataByte;
+			
 			VOLREG uint8_t nPaletteIndex = 0;
-			if (--ptrGraphic<ptrGraphicLastPlusOne) {
-				nPaletteIndex = pgm_read_byte(ptrGraphic);
-			} 
-			//~ uint8_t * ptrDataSrc = palette + nPaletteIndex*3+idxChannel--;
-			uint8_t * ptrDataSrc = &palette[nPaletteIndex*3+idxChannel--];
-			VOLREG uint8_t dataByte = *ptrDataSrc;
-			ptrDataSrc--;
+			uint8_t * ptrDataSrc;
 			//~ VOLREG uint8_t dataByte = (idxChannel++>=1)?0xFF:0x00;
 			
-			VOLREG uint8_t toSPDR = dataByte;
-			uint8_t nChipsSent = 0;
-			
-			for (;;) { // Send bytes loop
-				while(!(SPSR & (1<<SPIF))) {
-					// Wait for the previous transfer to finish
-				}
-				SPDR = toSPDR;			// Send the byte
-				nBytesSent++;
+			//~ uint8_t nChipsSent = 0;
+
+			//~ while (nChipsSent++<CHIPS_PER_UNIT) {
+			for (int idxChip=0;idxChip<CHIPS_PER_UNIT; idxChip++) {
+				/* 	Padding: we need to pre-pad
+					We will send 15 12-bit values (180 bits) which is 22.5 8-bit SPI 8-bit bytes
+					For every TLC5490 we actually need to send 16 12-bit values (192 bits in total)
+					because that's what the TLC5490 serial comms expect. 
+					Since we are using only 15 of the output lines, 
+					the 16th value is unnecessary (we are not using OUT15)
+					We also need to pad for the extra nibble (22.5 SPI above) 
+					So if we start by sending the empty 12-bit value, we are OK
+					This padding needs to be done for every chip
+				*/
+				SPDR = 0;					// First 8 bits of the empty 12-bit data
+											// technically [idxNextSendType==0] 
+											// 0 padding + nibble 1 of channel 15
+				waitSPIfinish;
+				SPDR = 0;					// Last 4 bits of the empty 12-bit data
+											// plus the empty 4 high bits of the first intensity data
+											// technically [idxNextSendType==1] 
+											// nibble 0 of channel 15 + 0 padding for channel 14
 				
-				// Check for LED driver edge
-				if (nBytesSent == 24) {
-					// Send fake (zero-ed out) data for channel 16, which we do not use
-					nBytesSent = 0;
-					
-					if (++nChipsSent == CHIPS_PER_UNIT) 
-						break;
-					
-					while(!(SPSR & (1<<SPIF))) {
-						// Wait for the previous transfer to finish
-					}
-					SPDR = 0;					// First 8 bits of the empty 12-bit data
-					while(!(SPSR & (1<<SPIF))) {
-						// Wait for the transfer to finish
-					}
-					SPDR = 0;					// Last 4 bits of the empty 12-bit data
-												// plus the empty 4 high bits of the first intensity data
-					idxNextSendType = 1;		// It will get incremented first
-												// so the first byte will actually be
-												// idxNextSendType = 2
-					nBytesSent += 2;
-					idxChannel = 2;
-				}
+				// Channel 14: just data	[idxNextSendType==2]
+				getNextPixel;
+				waitSPIfinish;
+				SPDR = dataByte;			// idxNextSendType==2
 				
-				// Update the send type
-				if (++idxNextSendType>2) { idxNextSendType = 0; }
-				//~ ++idxNextSendType %= 4;
+				// Padding + nibble 1 of ch 13 data [idxNextSendType==0]
+				getNextChannel;
+				waitSPIfinish;
+				spiSendPaddingPlusHighNibble;		// idxNextSendType = 0
 				
-				// Prepare the next one for loading
-				if (idxNextSendType==1) {
-					// Case 1: Need to send the low nibble + padding
-					toSPDR = dataByte<<4;
-				} else {
-					// Either way we need another new data in dataByte
-					if (idxChannel==2) {
-						// Load next palette index
-						/* 	Used to have an out-of-bounds check here
-							but it isn't necessary 
-						if (--ptrGraphic < ptrGraphicFirst)
-							break;
-						*/
-						if (--ptrGraphic<ptrGraphicLastPlusOne) {
-							nPaletteIndex = pgm_read_byte(ptrGraphic);
-							//~ ptrDataSrc = palette + nPaletteIndex*3+2;
-							ptrDataSrc = &palette[nPaletteIndex*3+2];
-						}
-					}
-					
-					dataByte = *ptrDataSrc;
-					ptrDataSrc--;
-					//~ dataByte = (idxChannel>=1)?0xFF:0x00;
-					if (idxChannel--==0) idxChannel = 2;
-					//~ This fails: ++idxChannel %= 3;
-					
-					if (idxNextSendType) {
-						// idxSendType == 2
-						// Case 2: Need to send pure data
-						toSPDR = dataByte;
-					} else {
-						// idxSendType == 0
-						// Case 0: Need to send padding + high nibble
-						toSPDR = dataByte >> 4;
-					}
-				}
+				// Nibble 0 of ch 13 data + padding of ch 12 data [idxNextSendType==1]
+				waitSPIfinish;
+				SPDR = dataByte << 4;		// idxNextSendType = 1
 				
-			} // End of send bytes loop
+				// Channel 12 data only [idxNextSendType==2]
+				getNextChannel;
+				waitSPIfinish;
+				SPDR = dataByte;			// idxNextSendType==2
+
+				// Padding + nibble 1 of ch 11 data [idxNextSendType==0]
+				getNextPixel;
+				waitSPIfinish;
+				spiSendPaddingPlusHighNibble;		// idxNextSendType = 0
+
+				// Nibble 0 of ch 11 data + padding of ch 10 data [idxNextSendType==1]
+				waitSPIfinish;
+				SPDR = dataByte << 4;		// idxNextSendType = 1
+
+				// Channel 10 data only [idxNextSendType==2]
+				getNextChannel;
+				waitSPIfinish;
+				SPDR = dataByte;			// idxNextSendType==2
+				
+				// Padding + nibble 1 of ch 9 data [idxNextSendType==0]
+				getNextChannel;
+				waitSPIfinish;
+				spiSendPaddingPlusHighNibble;		// idxNextSendType = 0
+				
+				// Nibble 0 of ch 9 data + padding of ch 8 data [idxNextSendType==1]
+				waitSPIfinish;
+				SPDR = dataByte << 4;		// idxNextSendType = 1
+				
+				// Channel 8 data only [idxNextSendType==2]
+				getNextPixel;
+				waitSPIfinish;
+				SPDR = dataByte;			// idxNextSendType==2
+				
+				// Padding + nibble 1 of ch 7 data [idxNextSendType==0]
+				getNextChannel;
+				waitSPIfinish;
+				spiSendPaddingPlusHighNibble;		// idxNextSendType = 0
+				
+				// Nibble 0 of ch 7 data + padding of ch 6 data [idxNextSendType==1]
+				waitSPIfinish;
+				SPDR = dataByte << 4;		// idxNextSendType = 1
+				
+				// Channel 6 data only [idxNextSendType==2]
+				getNextChannel;
+				waitSPIfinish;
+				SPDR = dataByte;			// idxNextSendType==2
+				
+				// Padding + nibble 1 of ch 5 data [idxNextSendType==0]
+				getNextPixel;
+				waitSPIfinish;
+				spiSendPaddingPlusHighNibble;		// idxNextSendType = 0
+				
+				// Nibble 0 of ch 5 data + padding of ch 4 data [idxNextSendType==1]
+				waitSPIfinish;
+				SPDR = dataByte << 4;		// idxNextSendType = 1
+				
+				// Channel 4 data only [idxNextSendType==2]
+				getNextChannel;
+				waitSPIfinish;
+				SPDR = dataByte;			// idxNextSendType==2
+				
+				// Padding + nibble 1 of ch 3 data [idxNextSendType==0]
+				getNextChannel;
+				waitSPIfinish;
+				spiSendPaddingPlusHighNibble;		// idxNextSendType = 0
+				
+				// Nibble 0 of ch 3 data + padding of ch 2 data [idxNextSendType==1]
+				waitSPIfinish;
+				SPDR = dataByte << 4;		// idxNextSendType = 1
+				
+				// Channel 2 data only [idxNextSendType==2]
+				getNextPixel;
+				waitSPIfinish;
+				SPDR = dataByte;			// idxNextSendType==2
+				
+				// Padding + nibble 1 of ch 1 data [idxNextSendType==0]
+				getNextChannel;
+				waitSPIfinish;
+				spiSendPaddingPlusHighNibble;		// idxNextSendType = 0
+				
+				// Nibble 0 of ch 1 data + padding of ch 0 data [idxNextSendType==1]
+				waitSPIfinish;
+				SPDR = dataByte << 4;		// idxNextSendType = 1
+				
+				// Channel 0 data only [idxNextSendType==2]
+				getNextChannel;
+				waitSPIfinish;
+				SPDR = dataByte;			// idxNextSendType==2
+			}
 			
 		} else {
 			// We are past the end of the graphic, Send black
