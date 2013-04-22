@@ -165,9 +165,12 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 					// Either way we need another new data in dataByte
 					if (idxChannel==2) {
 						// Load next palette index
+						/* 	Used to have an out-of-bounds check here
+							but it isn't necessary 
 						if (--ptrGraphic < ptrGraphicFirst)
 							break;
-						if (ptrGraphic<ptrGraphicLastPlusOne)
+						*/
+						if (--ptrGraphic<ptrGraphicLastPlusOne)
 							nPaletteIndex = pgm_read_byte(ptrGraphic);
 					}
 					
