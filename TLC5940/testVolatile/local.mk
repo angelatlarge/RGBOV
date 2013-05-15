@@ -10,6 +10,9 @@ LIBC_DIR=/usr/local/avr/avr/lib
 TOOLS_DIR=$(AVR_DIR)/bin
 # executables 
 CC=$(TOOLS_DIR)/avr-gcc
+#~ CC=/usr/local/avr/bin/avr-gcc-4.7.3.exe
+#~ CC=/home/kirill/gcc/gcc-4.7.3/build/gcc/xgcc.exe
+#~ CC=/home/kirill/gcc/gcc-4.7.3/host-i686-pc-cygwin/gcc/xgcc.exe
 OBJCOPY=$(TOOLS_DIR)/avr-objcopy
 OBJDUMP=$(TOOLS_DIR)/avr-objdump
 SYMLIST=$(TOOLS_DIR)/avr-nm

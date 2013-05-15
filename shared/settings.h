@@ -4,8 +4,8 @@
 #define	INTENSITY_COUNTER_MAX	1<<(INTENSITY_LEVELS-1)
 #define VERTICAL_PIXELS			30
 //~ #define VERTICAL_PIXELS			10
-#define SIDES_COUNT				1
-#define SPOKES_COUNT			1
+#define SIDES_COUNT				2
+#define SPOKES_COUNT			2
 //~ #define VERTICAL_PIXELS			10
 
 

@@ -73,9 +73,9 @@
 #~ MCU=atmega48a
 #~ MCU=atmega16
 #~ MCU=atmega32
-MCU=atmega328p
+MCU=atmega328
 MACROS+=-D CLOCK_SRC=8000000UL
-MACROS+=-D CLOCK_PRESCALE=1UL
+MACROS+=-D CLOCK_PRESCALE=8UL
 MACROS+=-D F_CPU="(CLOCK_SRC/CLOCK_PRESCALE)"
 PROGRAMMER_MCU=m328pu
 
@@ -183,7 +183,7 @@ HEXFORMAT=ihex
 # compiler
 CONLYFLAGS= \
 	-Wstrict-prototypes						\
-	-Wa,-ahlms=$(OBJDIR)/$(notdir $(firstword $(filter %.lst, $(<:.c=.lst))))
+	-Wa,-ahlms=$(OBJDIR)/$(notdir $(firstword $(filter %.lst.gcc, $(<:.c=.lst.gcc))))
 
 CALLFLAGS=\
 	-I. $(INC) -g -mmcu=$(MCU) -O$(OPTLEVEL) \
@@ -200,7 +200,7 @@ CALLFLAGS=\
 # c++ specific flags
 CPPFLAGS=	\
 	-fno-exceptions               \
-	-Wa,-ahlms=$(OBJDIR)/$(notdir $(firstword $(filter %.lst, $(<:.cpp=.lst)) $(filter %.lst, $(<:.cc=.lst)) $(filter %.lst, $(<:.C=.lst))))	\
+	-Wa,-ahlms=$(OBJDIR)/$(notdir $(firstword $(filter %.lst.gcc, $(<:.cpp=.lst.gcc)) $(filter %.lst.gcc, $(<:.cc=.lst.gcc)) $(filter %.lst.gcc, $(<:.C=.lst.gcc))))	\
 	-Wno-uninitialized
 
 # assembler
@@ -342,7 +342,7 @@ GENASMFILES=$(filter %.s, $(OBJDEPS:.o=.s))
 
 # Make targets:
 # all, disasm, stats, hex, writeflash/install, clean
-all: $(TRG) symbols
+all: $(TRG) $(DUMPTRG) symbols
 
 disasm: $(DUMPTRG) stats
 
@@ -414,7 +414,9 @@ $(TRG): $(OBJDEPS) $(HDEPS)
 .cpp.s .cc.s .C.s :
 	$(CC) -S $(CALLFLAGS) $(CPPFLAGS) $< -o $@
 
-
+#### Generating disassembly files ####
+#~ .lst.od .elf :
+	#~ $(OBJDUMP)
 
 #### Generating object files ####
 # object from C

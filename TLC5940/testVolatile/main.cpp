@@ -1,8 +1,5 @@
 #include <avr/io.h>
-#include <avr/interrupt.h>
 #include <util/delay.h>
-
-#define nop()  __asm__ __volatile__("nop")
 
 #define LED_PORT			PORTD
 #define LED_BIT				7
@@ -11,19 +8,16 @@
 volatile uint8_t latchingFlag;
 
 int main() {
-
 	
-	DDRB = 0xFF;
+	LED_PORT &= ~(1<<LED_BIT);
+	//~ LED_PORT |= (1<<LED_BIT);
 	DDRD = 0xFF;
-
-	sei();				// interrupt enable
-
-	LED_PORT |= 1<<LED_BIT;
-	
-	while (1) {
+	for (;;) {
 		latchingFlag=1;
 		if (latchingFlag==0) {
-			LED_PORT ^= 1<<LED_BIT;
+			LED_PORT ^= 1<<LED_BIT;	// Toggle the LED
+			//~ LED_PORT &= 1<<LED_BIT;	// Toggle the LED
+			//~ PORTB |= 1<<7;
 			_delay_ms(100);
 			latchingFlag = 1;
 		}
