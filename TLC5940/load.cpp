@@ -38,7 +38,7 @@
 									*/
 
 #define LEDS_PER_CHIP		5
-#define CHIPS_PER_UNIT		6
+#define CHIPS_PER_UNIT		3
 #define LINES_PER_CHIP		(LEDS_PER_CHIP*3)
 
 /*
@@ -46,16 +46,12 @@
 */
 
 
+
 	
 #define TLC5940_XLAT_BIT	7
 #define TLC5940_XLAT_PORT	PORTD
 #define TLC5940_XLAT_DDR	DDRD
 #define TLC5940_XLAT_PINS	PIND
-
-#define TLC5940_SCLK_BIT	4
-#define TLC5940_SCLK_PORT	PORTD
-#define TLC5940_SCLK_DDR	DDRD
-#define TLC5940_SCLK_PINS	PIND
 
 #define TLC5940_DCPRG_BIT	4
 #define TLC5940_DCPRG_PORT	PORTB
@@ -67,11 +63,18 @@
 #define TLC5940_VPRG_DDR	DDRB
 #define TLC5940_VPRG_PINS	PINB
 
+#define DRIVER_SWITCH_PORT	PORTC
+#define DRIVER_SWITCH_BIT	5
+#define DRIVER_SWITCH_DDR	DDRC
+#define DRIVER_SWITCH_PINS	PINC
+
 #define PROGMEM_GRAPHIC
 	
 //~ static uint8_t nColumnData[SIDES_COUNT*SPOKES_COUNT][COLUMN_DATA_BYTES];
 static uint8_t useHeight = (VERTICAL_PIXELS<GRAPHIC_HEIGHT) ? VERTICAL_PIXELS : GRAPHIC_HEIGHT;
 #define VOLREG
+
+static uint8_t nUnitWidth = HORZ_PIXELS / SPOKES_COUNT;
 
 void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 	
@@ -81,9 +84,26 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 	
 	do { // This is the unit loop
 		
-		if ( (idxHorizontalPixel<HORZ_PIXELS) && (idxHorizontalPixel<GRAPHIC_WIDTH)) {
-
+		// Set the bits to go to the right unit
+		switch (idxUnit) {
+		case 0:
+			//~ dputs("Port on");
+			DRIVER_SWITCH_PORT |= (1<<DRIVER_SWITCH_BIT);
+			break;
+		case 1:
+			//~ dputs("Port off");
+			DRIVER_SWITCH_PORT &= ~(1<<DRIVER_SWITCH_BIT);
+			break;
+		}
+		
 			
+		// Use this for a single spoke
+		//~ uint8_t nUnitColumnIndex = idxHorizontalPixel;
+		// Use this for more than one spoke
+		uint8_t nUnitColumnIndex = (idxHorizontalPixel + nUnitWidth*idxUnit) % HORZ_PIXELS;
+		
+		if ( nUnitColumnIndex<GRAPHIC_WIDTH ) {
+
 			/* 	Padding: we need to pre-pad
 				We will send 15 12-bit values (180 bits) which is 22.5 8-bit SPI 8-bit bytes
 				For every TLC5490 we actually need to send 16 12-bit values (192 bits in total)
@@ -107,7 +127,8 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 			
 			// Different curColDatas are not implemented yet
 			//~ uint8_t * curColData = nColumnData[idxUnit];
-			const uint8_t * ptrGraphicFirst = &(graphic[idxHorizontalPixel][0]);
+			
+			const uint8_t * ptrGraphicFirst = &(graphic[nUnitColumnIndex][0]);
 			const uint8_t * ptrGraphicLastPlusOne = ptrGraphicFirst + GRAPHIC_HEIGHT;
 			const uint8_t * ptrGraphic = ptrGraphicFirst + VERTICAL_PIXELS; // Note: we'll use PRE-INCREMENT EVERYWHERE
 			
@@ -281,7 +302,11 @@ void loadingInitDisplay() {
 #	else /* PRECOMPUTE_PALETTE */
 		// Nothing to do 
 #	endif /* PRECOMPUTE_PALETTE */
-	
+
+	// Set the driver switcher to be output
+	ADCSRA = 0;	// ADC off
+	DRIVER_SWITCH_DDR |= 1<<DRIVER_SWITCH_BIT;
+		
 	// Set SPI pins to output
 	DDRB = 0xFF;
 		
