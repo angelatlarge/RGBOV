@@ -509,7 +509,7 @@ ISR(INT0_vect) {
 				// Must use a prescaler higher than one. Using 8
 				nIntensTimerPrescaler = 8;
 				TCCR1B = 0
-					|(0<<CS12)|(1<<CS11)|(1<<CS10)			// Prescaler=8
+					|(0<<CS12)|(1<<CS11)|(0<<CS10)			// Prescaler=8
 					|(0<<WGM13)|(1<<WGM12)					// CTC Mode
 					;
 
@@ -621,7 +621,7 @@ int main() {
 		;
 	TCCR1B = 0
 		|(0<<CS12)|(0<<CS11)|(1<<CS10)		// Use prescaler one: useful for debugging
-		//|(INTENS_TIMER_PRESC_BITS)			// Prescaler
+		//~ |(INTENS_TIMER_PRESC_BITS)			// Prescaler
 		|(0<<WGM13)|(1<<WGM12)				// CTC Mode
 		;
 	OCR1A = 0xFFFF;							// Not doing anything until we get a wheel speed
@@ -639,11 +639,10 @@ int main() {
 	sei();									// Enable interrupts
 	
 
-	for (;;) {
-		loadingPrepareUpdate(0);
-		loadingUpdateDisplay(0);
-		//~ _delay_ms(500);
-	}
+	//~ for (;;) {
+		//~ loadingPrepareUpdate(0);
+		//~ loadingUpdateDisplay(0);
+	//~ }
 
 	//~ uint8_t anData[4] = {0x00, 0x00, 0x00, 0x00};
 	//~ sr.forceWriteData(0, 4, anData);	
