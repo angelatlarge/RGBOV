@@ -96,6 +96,27 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 			break;
 		}
 		
+		/* 	Wait for the switch to settle down
+			We may not need it depending on how long the subsequent operations take
+			in the worst case the current switch we are using.
+			
+			Some faster switches:
+				SN74LVC1G3157 
+				TS5A3157
+				TS12A12511 - wide voltage range, up to 100ns propagation time
+		*/
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		
 			
 		// Use this for a single spoke
 		//~ uint8_t nUnitColumnIndex = idxHorizontalPixel;
@@ -130,7 +151,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 			
 			const uint8_t * ptrGraphicFirst = &(graphic[nUnitColumnIndex][0]);
 			const uint8_t * ptrGraphicLastPlusOne = ptrGraphicFirst + GRAPHIC_HEIGHT;
-			const uint8_t * ptrGraphic = ptrGraphicFirst + VERTICAL_PIXELS; // Note: we'll use PRE-INCREMENT EVERYWHERE
+			const uint8_t * ptrGraphic = ptrGraphicFirst + VERTICAL_PIXELS; // Note: we'll use PRE-decrement everywhere
 			
 			VOLREG uint8_t idxChannel = 2;	// We want to walk the channels in reverse
 			VOLREG uint8_t nPaletteIndex = 0;
