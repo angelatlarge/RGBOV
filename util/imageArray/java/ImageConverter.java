@@ -2,18 +2,33 @@ import java.awt.image.BufferedImage;
 import java.util.LinkedHashMap;
 import java.lang.IllegalArgumentException;
 
+/**
+ * ImageConverter - converts an image to a palettized image 
+ *                  and prints it out as a C/C++ array
+ * 
+ * The image conversion takes place in two steps:
+ * 
+ * First all the colors and their usage count is 
+ * stored in a hash table. Using this hash table we 
+ * can quantize the colors if the number of used colors
+ * exceeds the palette size (currently not done)
+ *
+ * Second, every color reference is converted to a 
+ * palette index
+ * 
+ */ 
 public class ImageConverter {
 	private final Palette mPalette;
 	private final BufferedImage mSourceImage;
 	
 	private class Palette {
 		private final LinkedHashMap<Integer, Integer> mUsedColors = new LinkedHashMap<Integer, Integer>();
-		private final int mBitsPerChannel;
+		private final int mIntensitiesPerChannel;
 		private int mCount = 0;
 		private boolean indecesReady = false;
 		
-		public Palette(int bitsPerChannel, int[] forcedColors) {
-			mBitsPerChannel = bitsPerChannel;
+		public Palette(int intensitiesPerChannel, int[] forcedColors) {
+			mIntensitiesPerChannel = intensitiesPerChannel;
 			if (forcedColors != null)
 				for (int color : forcedColors) {
 					if (mUsedColors.get(color) == null) 
@@ -23,11 +38,14 @@ public class ImageConverter {
 		}
 
 		private int reduceColor(int sourceColor) {
-			if (mBitsPerChannel<8) {
+			if (mIntensitiesPerChannel<255) {
 				int outputColor = 0;
 				for (int idxChannel=0; idxChannel<3; idxChannel++) {
 					int chanInData = (sourceColor & (0xFF << (8*idxChannel))) >> (8*idxChannel);
-					int chanOutData = (int)(chanInData/(1<<mBitsPerChannel))*(1<<mBitsPerChannel);
+					int chanOutData = 
+						(int)(chanInData/(0xFF/(float)mIntensitiesPerChannel))
+					//~ *(mIntensitiesPerChannel)
+						;
 					outputColor += chanOutData << (8*idxChannel);
 				}
 				return outputColor;
@@ -41,7 +59,7 @@ public class ImageConverter {
 				throw new IllegalArgumentException("Already generated indeces");
 			}
 			
-			// Reduce the color according to the bitsPerPixel setting
+			// Reduce the color according to the intensities per channel setting
 			int outputColor = reduceColor(sourceColor);
 			
 			// Update the color usage count
@@ -94,8 +112,8 @@ public class ImageConverter {
 		
 	}
 	
-	public ImageConverter(BufferedImage sourceImage, int bitsPerChannel) {
-		mPalette = new Palette(bitsPerChannel, null);
+	public ImageConverter(BufferedImage sourceImage, int intensitiesPerChannel) {
+		mPalette = new Palette(intensitiesPerChannel, null);
 		mSourceImage = sourceImage;
 		
 		for ( int y=0 ; y<sourceImage.getHeight(); y++) {
@@ -119,8 +137,8 @@ public class ImageConverter {
 		
 		// Print the data itself
 		int[] limits = {0,0};
-		limits[dataYfirst?1:0] = mSourceImage.getWidth();
-		limits[dataYfirst?0:1] = mSourceImage.getHeight();
+		limits[dataYfirst?0:1] = mSourceImage.getWidth();
+		limits[dataYfirst?1:0] = mSourceImage.getHeight();
 		for (int i=0; i<limits[0]; i++) {
 			for (int j=0; j<limits[1]; j++) {
 				if (j==0) {
@@ -128,7 +146,7 @@ public class ImageConverter {
 				} else {
 					sb.append(",");
 				}
-				sb.append(String.format("0x%02x", mPalette.getColorIndex(mSourceImage.getRGB(dataYfirst?j:i,dataYfirst?i:j))));
+				sb.append(String.format("0x%02x", mPalette.getColorIndex(mSourceImage.getRGB(dataYfirst?i:j,dataYfirst?j:i))));
 			}
 			
 			if (i<limits[0]) {
@@ -137,6 +155,8 @@ public class ImageConverter {
 				sb.append("}\n");
 			}
 		}
+		
+		sb.append(String.format("};\n", dataName));
 		
 		return sb.toString();
 	}

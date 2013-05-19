@@ -22,7 +22,7 @@ public class ImageProcessor {
 		String filename = args[0];
 		try {
 			BufferedImage sourceImage = ImageIO.read( new File(filename) );
-			ImageConverter ic = new ImageConverter(sourceImage, 8);
+			ImageConverter ic = new ImageConverter(sourceImage, 7);
 			System.out.println(ic.makeCArrayString(true, "graphic", "palette"));
 		} catch (IOException e) {
 			System.err.printf("Unable to read %s: %s", filename, e.getMessage());
