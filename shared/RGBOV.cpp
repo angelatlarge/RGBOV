@@ -419,7 +419,7 @@ volatile	uint16_t	nHiResTimebaseCount;
 volatile	uint16_t	nLastWheelTick;
 volatile	uint16_t	nTicksPerRevolution;
 
-volatile	uint32_t	nIntensityTimerHitCounter;
+volatile	uint8_t	nIntensityTimerHitCounter;
 
 volatile	uint8_t	idxHorizontalPixel;
 
@@ -503,25 +503,32 @@ ISR(INT0_vect) {
 #			endif /* PROGMEM_GRAPHIC */
 			
 			// We want the intensity timer tick to occur 2^(INTENSITY_LEVELS) times per horizontal pixel
-			// ... try at min prescaler
-			uint32_t nCounterVal = round(F_CPU/fWheelFreq/(float)(INTENSITY_COUNTER_MAX)/(float)HORZ_PIXELS);
-			if (nCounterVal > 0xFFFF) {
-				// Must use a prescaler higher than one. Using 8
-				nIntensTimerPrescaler = 8;
-				TCCR1B = 0
-					|(0<<CS12)|(1<<CS11)|(0<<CS10)			// Prescaler=8
-					|(0<<WGM13)|(1<<WGM12)					// CTC Mode
-					;
-
-			} else {
-				// Prescaler = 1 is sufficient
-				nIntensTimerPrescaler = 1;
-				TCCR1B = 0
-					|(0<<CS12)|(0<<CS11)|(1<<CS10)			// Prescaler=1
-					|(0<<WGM13)|(1<<WGM12)					// CTC Mode
-					;
+			// Need to find the prescaler value such that timer does not overflow
+			nIntensTimerPrescaler = 1;
+			uint32_t nCyclesPerColumn = round(F_CPU/nIntensTimerPrescaler/fWheelFreq/(float)(INTENSITY_COUNTER_MAX)/(float)HORZ_PIXELS);
+			while (nCyclesPerColumn > 0xFFFF) {
+				nIntensTimerPrescaler *= 8;
+				nCyclesPerColumn = round(F_CPU/nIntensTimerPrescaler/fWheelFreq/(float)(INTENSITY_COUNTER_MAX)/(float)HORZ_PIXELS);
 			}
-			OCR1A = round(F_CPU/float(nIntensTimerPrescaler)/fWheelFreq/(float)(INTENSITY_COUNTER_MAX)/(float)HORZ_PIXELS);
+			TCCR1B = (0<<WGM13)|(1<<WGM12);			// CTC mode
+			switch (nIntensTimerPrescaler) {
+			case 1:
+				TCCR1B |= (0<<CS12)|(0<<CS11)|(1<<CS10);
+				break;
+			case 8:
+				TCCR1B |= (0<<CS12)|(1<<CS11)|(0<<CS10);
+				break;
+			case 64:
+				TCCR1B |= (0<<CS12)|(1<<CS11)|(1<<CS10);
+				break;
+			}
+			OCR1A = 
+				round(
+					F_CPU
+					/float(nIntensTimerPrescaler)
+					/fWheelFreq
+					/(float)(INTENSITY_COUNTER_MAX)
+					/(float)HORZ_PIXELS);
 
 #define DPRINTBTH
 #ifdef DPRINTBTH
@@ -627,13 +634,6 @@ int main() {
 	OCR1A = 0xFFFF;							// Not doing anything until we get a wheel speed
 	TIMSK1 = (1<<OCIE1A);					// Enable interrupt on timer1
 
-	// Wheel speed timer: default settings
-	TCCR1B = 0
-		|(0<<CS12)|(1<<CS11)|(1<<CS10)			// Prescaler=8
-		|(0<<WGM13)|(1<<WGM12)					// CTC Mode
-		;
-	OCR1A = 1;
-
 	loadingInitDisplay();
 
 	sei();									// Enable interrupts
@@ -692,17 +692,21 @@ int main() {
 			// No intensity timer hit
 			// Just prepare the display
 			if (!nDisplayPrepared) {
+#ifdef PRINT_LOAD_SPEED				
 				uint16_t nStart = nHiResTimebaseCount;
+#endif				
 				loadingPrepareUpdate(
 					idxHorizontalPixel
 	#				if INTENSITY_LEVELS>1			
 					, idxIntensityTimeSlice
 	#				endif /* INTENSITY_LEVELS>1 */
 					);
+#ifdef PRINT_LOAD_SPEED				
 				int16_t nCount = nHiResTimebaseCount - nStart;
 				if ( nCount > 2) {
 					dputsi(" ", nCount, 0);
 				}
+#endif				
 				nDisplayPrepared = 1;
 			}
 		}			
