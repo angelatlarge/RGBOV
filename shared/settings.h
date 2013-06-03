@@ -1,4 +1,4 @@
-#define	HORZ_PIXELS				100
+#define	HORZ_PIXELS				45
 //~ #define	HORZ_PIXELS				1
 #define	INTENSITY_LEVELS		1
 #define	INTENSITY_COUNTER_MAX	1<<(INTENSITY_LEVELS-1)
