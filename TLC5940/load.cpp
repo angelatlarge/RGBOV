@@ -28,6 +28,7 @@
 #pragma message "###   Horizontal pixels " STR(HORZ_PIXELS)      "   ###"
 #pragma message "###   Vertical pixels    " STR(VERTICAL_PIXELS) "   ###"
 #pragma message "###   Graphic height     " STR(GRAPHIC_HEIGHT)  "   ###"
+#pragma message "###   Graphic width     " STR(GRAPHIC_WIDTH)  "   ###"
 #pragma message "###   Sides               " STR(SIDES_COUNT)  "   ###"
 #pragma message "###   Spokes              " STR(SPOKES_COUNT)  "   ###"
 #pragma message "#################################"
@@ -86,13 +87,13 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 		
 		// Set the bits to go to the right unit
 		switch (idxUnit) {
-		case 0:
-			//~ dputs("Port on");
-			DRIVER_SWITCH_PORT |= (1<<DRIVER_SWITCH_BIT);
-			break;
 		case 1:
 			//~ dputs("Port off");
 			DRIVER_SWITCH_PORT &= ~(1<<DRIVER_SWITCH_BIT);
+			break;
+		case 0:
+			//~ dputs("Port on");
+			DRIVER_SWITCH_PORT |= (1<<DRIVER_SWITCH_BIT);
 			break;
 		}
 		
@@ -116,6 +117,23 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 		nop();
 		nop();
 		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
 		
 			
 		// Use this for a single spoke
@@ -123,7 +141,15 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 		// Use this for more than one spoke
 		uint8_t nUnitColumnIndex = (idxHorizontalPixel + nUnitWidth*idxUnit) % HORZ_PIXELS;
 		
-		if ( nUnitColumnIndex<GRAPHIC_WIDTH ) {
+		if (
+					( nUnitColumnIndex<GRAPHIC_WIDTH ) 
+				&& 
+					(idxHorizontalPixel<HORZ_PIXELS) 		// Overflow generates black:
+															// if the caller tells us to draw a non-existent pixel
+															// we draw black
+			) 
+		{
+			// Write graphics data to the drivers
 
 			/* 	Padding: we need to pre-pad
 				We will send 15 12-bit values (180 bits) which is 22.5 8-bit SPI 8-bit bytes
@@ -242,7 +268,7 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 			} // End of send bytes loop
 			
 		} else {
-			// We are past the end of the graphic, Send black
+			// Send black
 #ifdef BLANK_MANUALLY
 			// Manual blanking by twiddling the clock bit
 			SPCR &= ~(1<<SPE)		// Disable SPI
@@ -254,7 +280,8 @@ void loadingPrepareUpdate(uint8_t idxHorizontalPixel) {
 			}
 #else		
 			// Blank by sending zeroed out data
-			for (uint8_t i=0;i<24*CHIPS_PER_UNIT;i++) {
+			for (uint8_t i=0;i<24*CHIPS_PER_UNIT;i++) {		// 24 is the number of 8-bit bytes to send
+															// in order to send 16 12-bit values
 				while(!(SPSR & (1<<SPIF))) {
 					// Wait for the previous transfer to finish
 				}

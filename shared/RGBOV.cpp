@@ -476,9 +476,8 @@ ISR(TIMER0_COMPA_vect ) {
 	nHiResTimebaseCount++;
 }
 
-ISR(INT0_vect) {
-	
-	// Occurs when the hall switch is triggered
+// Occurs when the hall switch is triggered
+ISR(INT0_vect) { 	
 	
 	// 1. Calculate the new wheel speed
 	if (checkUpdateWheelSpeed()) {
@@ -530,7 +529,7 @@ ISR(INT0_vect) {
 					/(float)(INTENSITY_COUNTER_MAX)
 					/(float)HORZ_PIXELS);
 
-#define DPRINTBTH
+//~ #define DPRINTBTH
 #ifdef DPRINTBTH
 //			dputsi("INTENSITY_COUNTER_MAX: ", INTENSITY_COUNTER_MAX);
 			dputsl("nTicksPerRevolution: ", nTicksPerRevolution);
@@ -648,6 +647,7 @@ int main() {
 	//~ sr.forceWriteData(0, 4, anData);	
 	nTicksPerRevolution = 0;
 	
+	// TODO: When horizontal pixel index wraps, we should prepare index 0
 	uint8_t nDisplayPrepared = 0;
 
 	for (;;) {
