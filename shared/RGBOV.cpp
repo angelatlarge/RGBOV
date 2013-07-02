@@ -418,6 +418,7 @@ This would seem to provide the ceiling on how fast the data could be loaded
 volatile	uint16_t	nHiResTimebaseCount;
 volatile	uint16_t	nLastWheelTick;
 volatile	uint16_t	nTicksPerRevolution;
+volatile	uint8_t 	nDisplayPrepared;
 
 volatile	uint8_t	nIntensityTimerHitCounter;
 
@@ -426,6 +427,8 @@ volatile	uint8_t	idxHorizontalPixel;
 //~ #define WHEEL_SPEED_TIMER_OCR			1
 //~ #define WHEEL_SPEED_TIMER_PRESCALER		64
 //~ #define WHEEL_SPEED_TIMER_PRESC_BITS	(0<<CS02)|(1<<CS01)|(1<<CS00)
+
+//~ #define WHEEL_SPEED_TIMER_OCR			1
 //~ #define WHEEL_SPEED_TIMER_PRESCALER		256
 //~ #define WHEEL_SPEED_TIMER_PRESC_BITS	(1<<CS02)|(0<<CS01)|(0<<CS00)
 
@@ -437,8 +440,8 @@ volatile	uint8_t	idxHorizontalPixel;
 #define WHEEL_SPEED_TIMER_PRESCALER		256
 #define WHEEL_SPEED_TIMER_PRESC_BITS	(1<<CS02)|(0<<CS01)|(0<<CS00)
 
-#define WHEEL_SPEED_TIMER_FREQ_INT		(F_CPU/WHEEL_SPEED_TIMER_PRESCALER/WHEEL_SPEED_TIMER_OCR)
-#define WHEEL_SPEED_TIMER_FREQ_FLOAT	((float)F_CPU/(float)WHEEL_SPEED_TIMER_PRESCALER/(float)WHEEL_SPEED_TIMER_OCR)
+#define WHEEL_SPEED_TIMER_FREQ_INT		(F_CPU/WHEEL_SPEED_TIMER_PRESCALER/(WHEEL_SPEED_TIMER_OCR+1))
+#define WHEEL_SPEED_TIMER_FREQ_FLOAT	((float)F_CPU/(float)WHEEL_SPEED_TIMER_PRESCALER/(float)(WHEEL_SPEED_TIMER_OCR+1))
 
 //#define INTENS_TIMER_PRESCALER			1
 //#define INTENS_TIMER_PRESC_BITS			(0<<CS12)|(0<<CS11)|(1<<CS10)
@@ -603,10 +606,12 @@ int main() {
 	
 	// Wheel speed measurement timer = timer 0
 	TCCR0A = 0 
+		|(0<<COM0A1)|(0<<COM0A1)	// OC0A disconnected
+		|(0<<COM0B1)|(0<<COM0B1)	// OC0B disconnected
 		|(1<<WGM01)|(0<<WGM00)		// CTC mode
 		;
 	TCCR0B = 0
-		| (1<<WGM02) 				
+		| (0<<WGM02) 				// CTC mode
 		| WHEEL_SPEED_TIMER_PRESC_BITS	
 		;
 	OCR0A = WHEEL_SPEED_TIMER_OCR;		/* Timer 0 frequency 	= (8Mhz/256/4)  = 7812.5Hz
@@ -647,12 +652,19 @@ int main() {
 	//~ sr.forceWriteData(0, 4, anData);	
 	nTicksPerRevolution = 0;
 	
-	// TODO: When horizontal pixel index wraps, we should prepare index 0
-	uint8_t nDisplayPrepared = 0;
-
 	for (;;) {
 		if (nIntensityTimerHitCounter != 0) {
 			// Time to load some data into the LEDs!
+			
+			if (idxHorizontalPixel == 0) {
+				/*
+					TODO:
+					What we really want to do, is after an end-of-row blank has been prepared and sent, 
+					prepare the first pixel again
+				*/
+					
+				nDisplayPrepared = 0;
+			}
 			
 			// Reset the counter
 			nIntensityTimerHitCounter = 0;
@@ -709,7 +721,8 @@ int main() {
 #endif				
 				nDisplayPrepared = 1;
 			}
-		}			
+		}		
+		
 	}
 
 }
